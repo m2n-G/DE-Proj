@@ -1,0 +1,2 @@
+"""Clean Lambda package."""
+
