@@ -1,3 +1,52 @@
+''' main.py
+- 의미와 역할
+    auth.py · websocket_client.py를 조립해서 전체 수집 흐름을 실행하는 파일이에요. 
+    토큰을 발급받고 WebSocket을 연결한 뒤, 수신된 데이터를 Kafka 토픽에 발행하는 역할을 해요. 
+    Day 1에서는 Kafka 발행 대신 터미널 출력으로 대체해서 수신 확인부터 해요.
+- 담아야 할 내용 순서
+    1. 환경변수 로드
+    └─ .env.dev 전체 로드
+
+    2. 토큰 발급
+    └─ auth.py 의 토큰 발급 함수 호출
+    └─ 발급 실패 시 프로그램 종료
+
+    3. 수신 데이터 처리 함수 정의
+    └─ websocket_client.py 의 on_message 콜백으로 전달할 함수
+    └─ Day 1: 원본 문자열 터미널 출력 (수신 확인용)
+    └─ Day 2: Kafka publish 로 교체 예정
+
+    4. WebSocket 실행
+    └─ websocket_client.py 의 연결 함수 호출
+    └─ 3번 함수를 콜백으로 전달
+
+    5. 장중 여부 확인 (옵션)
+    └─ market_config.py 의 is_market_time · is_market_day 활용
+    └─ 장 외 시간에는 연결 시도하지 않음
+
+    6. 로깅
+    └─ 전체 흐름 시작 · 종료 로그
+'''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''
 """WebSocket to Kafka collector entry point."""
 
 from src.common.logger import get_logger
@@ -11,4 +60,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
+'''

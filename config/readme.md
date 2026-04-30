@@ -3,6 +3,8 @@
 > Configuration files shared by the collector, consumer, Lambda functions, and tests. 
 > Keep secrets out of this directory. Use environment variables or `.env` files for keys, ARNs, bucket names, and webhook values.
 
+---
+
 ## signal_config.py
 - 의미와 역할
     이 파이프라인의 퀀트 전략 파라미터 중앙 관리 파일이에요. lambda_signal, lambda_optimize, lambda_notify 세 Lambda가 전부 이 파일을 참조해서 MA 계산 기준과 종목 리스트를 가져가요. 나중에 "MA 파라미터를 바꾸고 싶다"거나 "종목을 추가하고 싶다"고 할 때 이 파일 하나만 수정하면 전체 파이프라인에 반영돼요.
@@ -17,6 +19,8 @@
     7. 종목별 현재 최적 MA 조합 딕셔너리 (BEST_MA)
     └─ lambda_optimize 가 매일 자동으로 이 값을 갱신함
   ```
+
+---
 
 ## path_config.py
 - 의미와 역할
@@ -45,6 +49,8 @@
         └─ 출력: config/date={YYYYMMDD}/best_ma_config.json
   ```
 
+---
+
 ## market_config.py
 - 의미와 역할
     한국 주식시장의 운영 규칙을 정의하는 파일이에요. lambda_clean에서 장외시간 데이터를 필터링할 때, lambda_signal에서 장중에만 MA 계산을 실행할 때, Airflow DAG에서 장 시작·마감 스케줄을 설정할 때 이 파일을 참조해요. 특히 장외 체결 데이터(동시호가, 시간외 거래)가 파이프라인에 섞이지 않도록 막는 역할이 중요해요.
@@ -62,6 +68,8 @@
         └─ 출력: True / False
         └─ 주의: 공휴일 처리 필요 (holidays 라이브러리 활용)
   ```
+
+---
 
 ## schema_config.py
 - 의미와 역할
