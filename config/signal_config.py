@@ -15,9 +15,16 @@
     └─ lambda_optimize 가 매일 자동으로 이 값을 갱신함
 '''
 # 모니터링 종목 리스트 (WATCHLIST)
+# 한국 주식 종목코드
+# 출처 : 네이버 금융 국내증시(https://finance.naver.com/sise/)
+# {005930:삼성전자,000660:sk하이닉스,005490:posco홀딩스,005380:현대차}
+# 종목 코드만 필요한 곳 → list(WATCHLIST.keys())
+# 종목명이 필요한 곳 → WATCHLIST.get(stock_code)
 WATCHLIST = {
     "005930": "Samsung Electronics",
     "000660": "SK hynix",
+    "005490": "POSCO holdings",
+    "005380": "Hyundai car",
 }
 
 # 백테스트 후보 MA 조합 목록 (MA_CANDIDATES)

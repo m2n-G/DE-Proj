@@ -27,7 +27,7 @@
    BRONZE_SCHEMA=None
    SILVER_TRADE_SCHEMA · SILVER_DAILY_SCHEMA
    GOLD_SIGNAL_SCHEMA · CONFIG_SCHEMA
-   → 딕셔너리 형태로 타입 정보 코드화
+   → 딕셔너리`{}` 형태로 타입 정보 코드화
 
 ✅ .env
    APP_KEY · APP_SECRET

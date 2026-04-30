@@ -72,7 +72,7 @@ WebSocket collector that subscribes to Korea Investment real-time trade data and
 ### 담아야 할 내용 순서
 ```
 1. 환경변수 로드
-   └─ .env.dev 전체 로드
+   └─ .env 전체 로드
 
 2. 토큰 발급
    └─ auth.py 의 토큰 발급 함수 호출
