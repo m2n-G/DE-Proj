@@ -60,11 +60,54 @@ logger = logging.getLogger(__name__)
 
 # 한투API(WebSocket) 엔드포인트
 APPROVAL_URL = "https://openapi.koreainvestment.com:9443/oauth2/Approval"   # 실시간 (웹소켓) 접속키 발급 URL
-WS_URL       = "wss://ops.koreainvestment.com:21000"                              # 국내주식 실시간시세 URL
+WS_URL       = "ws://ops.koreainvestment.com:21000"                         # 국내주식 실시간시세 URL
 REALTIME_TRADE_TR_ID = "H0STCNT0"                                           # 국내주식 실시간 체결가 정보 요청 ID
 
 # 쉼표로 구분된 종목 문자열을 실제 종목 코드 리스트로 변환
 stock_codes = list(WATCHLIST.keys())
+
+'''
+ JSON 제어 메시지를 먼저 처리
+    SUBSCRIBE SUCCESS는 구독 확인 로그만 남기고, 
+    PINGPONG는 같은 메시지를 다시 보내 heartbeat를 유지한 뒤,
+    에러 제어 메시지는 경고 로그로 분리
+'''
+def handle_control_message(
+    ws_app: websocket.WebSocketApp,
+    message: str,
+) -> bool:
+    """Handle JSON control frames and return True when consumed."""
+    try:
+        payload = json.loads(message)
+    except json.JSONDecodeError:
+        return False
+
+    header = payload.get("header", {})
+    body = payload.get("body", {})
+    tr_id = header.get("tr_id")
+    msg1 = body.get("msg1")
+    rt_cd = body.get("rt_cd")
+
+    if tr_id == "PINGPONG":
+        # Echo heartbeat frames back to keep the session alive.
+        ws_app.send(message)
+        logger.debug("PINGPONG received and echoed back")
+        return True
+
+    if msg1 == "SUBSCRIBE SUCCESS":
+        logger.info("%s subscription confirmed", header.get("tr_key"))
+        return True
+
+    if rt_cd and rt_cd != "0":
+        logger.warning(
+            "Control message error for %s: %s (%s)",
+            header.get("tr_key"),
+            msg1,
+            body.get("msg_cd"),
+        )
+        return True
+
+    return False
 
 def get_approval_key():
     body = {
@@ -113,16 +156,25 @@ def connect_websocket( on_message_callback: Callable[[str], None]) -> None:
     """Connect to KIS WebSocket and pass raw messages to the callback."""
     approval_key = get_approval_key()
 
+    # 웹소켓 연결이 성공했을 때 자동으로 호출되는 콜백 함수 => “연결되자마자 관심 종목들을 구독하라”
+    #   1. "WebSocket connected" 로그를 남기고
+    #   2. subscribe_stocks(ws_app, approval_key)를 호출해서 종목 구독 요청을 보냅니다.
     def on_open(ws_app: websocket.WebSocketApp) -> None:
         logger.info("WebSocket connected")
-        subscribe_stocks(ws_app, approval_key)
+        subscribe_stocks(ws_app, approval_key)       
 
+    # 웹소켓 서버에서 메시지가 들어올 때마다 호출되는 콜백 함수
+    # KIS에서 실시간 체결 데이터가 들어오면 message에 원본 문자열 입력
     def on_message(ws_app: websocket.WebSocketApp, message: str) -> None:
+        if handle_control_message(ws_app, message):
+            return
         on_message_callback(message)
 
+    # 웹소켓 연결 중 에러가 발생했을 때 호출
     def on_error(ws_app: websocket.WebSocketApp, error: Exception) -> None:
         logger.error("WebSocket error: %s", error)
 
+    # 웹소켓 연결이 종료될 때 호출
     def on_close(
         ws_app           : websocket.WebSocketApp,
         close_status_code: int | None,
@@ -130,6 +182,7 @@ def connect_websocket( on_message_callback: Callable[[str], None]) -> None:
     ) -> None:
         logger.info("WebSocket closed: %s - %s", close_status_code, close_msg)
 
+    # 웹소켓 클라이언트 객체 생성
     ws_app = websocket.WebSocketApp(
         WS_URL,
         on_open   =on_open,

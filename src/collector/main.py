@@ -3,6 +3,7 @@
     auth.py · websocket_client.py를 조립해서 전체 수집 흐름을 실행하는 파일이에요. 
     토큰을 발급받고 WebSocket을 연결한 뒤, 수신된 데이터를 Kafka 토픽에 발행하는 역할을 해요. 
     Day 1에서는 Kafka 발행 대신 터미널 출력으로 대체해서 수신 확인부터 해요.
+    
 - 담아야 할 내용 순서
     1. 환경변수 로드
     └─ .env 전체 로드
@@ -28,36 +29,39 @@
     └─ 전체 흐름 시작 · 종료 로그
 '''
 
+import datetime
+import logging
+from datetime import date
+
+from config.market_config import is_market_day, is_market_time
+from src.collector.websocket_client import connect_websocket
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''
-"""WebSocket to Kafka collector entry point."""
-
-from src.common.logger import get_logger
-
-logger = get_logger(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def main() -> None:
     logger.info("Collector template ready. Implement WebSocket subscription here.")
 
+    today = date.today()
+    current_time = datetime.datetime.now().time()
+
+    def on_message_callback(message: str) -> None:
+        print("체결 raw 데이터 :", message)
+
+    connect_websocket(on_message_callback)
+
+    '''
+    if is_market_time(current_time):
+        if is_market_day(today):
+            connect_websocket(on_message_callback)
+        else:
+            logger.info("오늘은 거래일이 아닙니다.")
+    else:
+        logger.info("현재는 거래 시간이 아닙니다.")
+    '''
+
 
 if __name__ == "__main__":
     main()
-'''

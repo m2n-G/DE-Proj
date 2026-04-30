@@ -23,7 +23,6 @@
 WATCHLIST = {
     "005930": "Samsung Electronics",
     "000660": "SK hynix",
-    "005490": "POSCO holdings",
     "005380": "Hyundai car",
 }
 
