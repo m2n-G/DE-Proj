@@ -110,3 +110,29 @@ main.py
                          Day 1: 터미널 출력
                          Day 2: Kafka publish
 ```
+
+---
+## kafka producer.py
+### 의미와 역할
+- WebSocket으로 수신한 체결 데이터를 Kafka 토픽에 발행하는 파일
+- main.py의 handle_message 함수가 이 파일을 호출해서 수신 데이터를 Kafka로 넘기도록 구현
+- 요점 : 데이터는 파싱 없이 원본 문자열 그대로 발행해야 함
+
+### 담아야 할 내용 순서
+```
+1. 환경변수 로드
+   └─ KAFKA_BOOTSTRAP 읽기
+
+2. Kafka Producer 초기화
+   └─ confluent_kafka 또는 kafka-python 라이브러리 사용
+   └─ bootstrap.servers 설정
+
+3. 메시지 발행 함수
+   └─ 입력 : 원본 문자열 (message: str)
+   └─ 토픽 : realtime-trade-topic
+   └─ 파티션 키 : 종목코드 (같은 종목은 같은 파티션으로)
+   └─ 원본 문자열 그대로 발행 (파싱 없음)
+
+4. 로깅
+   └─ 발행 성공 · 실패 로그
+```
