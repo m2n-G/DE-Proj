@@ -34,39 +34,37 @@
 """    
 
 '''
-
 import datetime
 import logging
 from datetime import date
 
 from config.market_config import is_market_day, is_market_time
 from src.collector.websocket_client import connect_websocket
-
+from src.collector.kafka_producer import create_producer, publish_raw_trade, close_producer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    logger.info("Collector template ready. Implement WebSocket subscription here.")
+    logger.info("Collector starting...")
 
-    today = date.today()
-    current_time = datetime.datetime.now().time()
+    # today        = date.today()
+    # current_time = datetime.datetime.now().time()
 
+    # Producer 생성
+    producer = create_producer()
+
+    # 수신 데이터 처리 함수
     def on_message_callback(message: str) -> None:
-        print("체결 raw 데이터 :", message)
+        print("체결 raw 데이터 :", message)        # Day 1 터미널 출력 유지
+        publish_raw_trade(producer, message)     # Day 2 Kafka 발행 추가
 
-    connect_websocket(on_message_callback)
-
-    '''
-    if is_market_time(current_time):
-        if is_market_day(today):
-            connect_websocket(on_message_callback)
-        else:
-            logger.info("오늘은 거래일이 아닙니다.")
-    else:
-        logger.info("현재는 거래 시간이 아닙니다.")
-    '''
+    # WebSocket 실행
+    try:
+        connect_websocket(on_message_callback)
+    finally:
+        close_producer(producer)                 # 종료 시 한 번만 flush
 
 
 if __name__ == "__main__":
