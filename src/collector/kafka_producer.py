@@ -88,9 +88,7 @@ def build_producer_config() -> dict:
     # 2. 없으면 ValueError
     # 3. producer 설정 dict 생성
     # 4. 보안 설정이 있으면 추가
-    
-    kafka_bootstrap = os.getenv("KAFKA_BOOTSTRAP")
-    if not kafka_bootstrap:
+    if not KAFKA_BOOTSTRAP:
         raise ValueError("KAFKA_BOOTSTRAP이 .env에 없습니다.")
 
     config = {

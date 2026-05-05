@@ -54,20 +54,20 @@ __all__ = [
 #   - 둘째, 시간은 항상 2자리로 패딩 (hour:02d)
 
 # Bronze 경로 함수
-def bronze_key(stock_code: str, date: str, hour: int) -> str:
-    return f"raw/{stock_code}/date={date}/hour={hour:02d}/{stock_code}.log"
+def bronze_key(stock_code: str, date: str, hour: int, timestamp: str , msg_id: str) -> str:
+    return f"raw/{stock_code}/date={date}/hour={hour:02d}/{stock_code}_{timestamp}_{msg_id}.log"
 
 # Silver 체결 경로 함수
-def silver_trade_key(stock_code: str, date: str, hour: int) -> str:
-    return f"processed/{stock_code}/date={date}/hour={hour:02d}/{stock_code}.parquet"
+def silver_trade_key(stock_code: str, date: str, hour: int, timestamp: str , msg_id: str) -> str:
+    return f"processed/{stock_code}/date={date}/hour={hour:02d}/{stock_code}_{timestamp}_{msg_id}.parquet"
 
 # Silver 일봉 경로 함수
-def silver_daily_key(stock_code: str, date: str) -> str:
-    return f"processed/daily/{stock_code}/date={date}/{stock_code}_daily.parquet"
+def silver_daily_key(stock_code: str, date: str, timestamp: str , msg_id: str) -> str:
+    return f"processed/daily/{stock_code}/date={date}/{stock_code}_{timestamp}_{msg_id}_daily.parquet"
 
 # Gold 시그널 경로 함수
-def gold_signal_key(stock_code: str, date:str) -> str:
-    return f"signal/{stock_code}/date={date}/{stock_code}_signals.parquet"
+def gold_signal_key(stock_code: str, date:str, timestamp: str, msg_id: str) -> str:
+    return f"signal/{stock_code}/date={date}/{stock_code}_{timestamp}_{msg_id}_signals.parquet"
 
 # Config 경로 함수
 def config_key(date: str) -> str:
