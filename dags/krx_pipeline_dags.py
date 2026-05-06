@@ -26,21 +26,48 @@ from airflow.sensors.time_sensor import TimeSensor
 logger = logging.getLogger(__name__)
 
 AIRFLOW_HOME = Path(os.environ.get("AIRFLOW_HOME", "/opt/airflow"))
-CONFIG_PATH = Path(
-    os.environ.get(
-        "KRX_DAG_CONFIG_PATH",
-        str(AIRFLOW_HOME / "config" / "mwaa_dag_config.yaml"),
-    )
-)
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 PROJECT_CONFIG_DIR = AIRFLOW_HOME / "project_config"
 if PROJECT_CONFIG_DIR.exists():
     sys.path.insert(0, str(AIRFLOW_HOME))
 
 
+def _candidate_config_paths() -> list[Path]:
+    configured_path = os.environ.get("KRX_DAG_CONFIG_PATH")
+    if configured_path:
+        return [Path(configured_path)]
+
+    return [
+        AIRFLOW_HOME / "config" / "mwaa_dag_config.yaml",
+        PROJECT_CONFIG_DIR / "mwaa_dag_config.yaml",
+        REPO_ROOT / "infra" / "airflow" / "mwaa_dag_config.yaml",
+        REPO_ROOT / "config" / "mwaa_dag_config.yaml",
+    ]
+
+
+def _resolve_config_path() -> Path:
+    candidates = _candidate_config_paths()
+
+    for path in candidates:
+        if path.exists():
+            return path
+
+    searched_paths = ", ".join(str(path) for path in candidates)
+    raise FileNotFoundError(
+        "KRX DAG config file was not found. "
+        f"Checked paths: {searched_paths}"
+    )
+
+
 def _load_yaml_config(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as file:
-        return yaml.safe_load(file)
+        config = yaml.safe_load(file)
+
+    if not isinstance(config, dict):
+        raise ValueError(f"DAG config must be a YAML mapping: {path}")
+
+    return config
 
 
 def _import_project_attr(dotted_path: str) -> Any:
@@ -247,6 +274,7 @@ def _create_dag(
     return dag
 
 
+CONFIG_PATH = _resolve_config_path()
 CONFIG = _load_yaml_config(CONFIG_PATH)
 WATCHLIST = _load_watchlist(CONFIG)
 
