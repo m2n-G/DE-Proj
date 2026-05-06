@@ -80,7 +80,7 @@ json{
 ```
 
 ---
-# handler.py
+# lambda_clean.handler
 ## 의미와 역할
 - S3 Bronze에 적재된 원본 구분자 문자열을 읽어서 파싱
 - 문자열을 정제 후 S3 Silver 두 경로에 저장
@@ -303,7 +303,7 @@ Lambda 콘솔
          2026-05-06T11:05:18.316Z
          REPORT RequestId: 16e11604-4e90-4c28-a32d-9574d231d42c	Duration: 1218.36 ms	Billed Duration: 3781 ms	Memory Size: 512 MB	Max Memory Used: 202 MB	Init Duration: 2562.50 ms
       ```
-- 실제 s3 저장 데이터 확인
+- 실제 s3 silver 적재 확인
    - 실시간 체결 데이터 : `s3://de-ai-07-827913617635-ma-proj/processed/000660/date=20260506/hour=20/000660_200517_d475e021.parquet`
       - 실제 데이터 테이블
          ![alt text](image.png)

@@ -1,54 +1,8 @@
-"""handler.py
-- 의미와 역할
-    - S3 Bronze에 적재된 원본 구분자 문자열을 읽어서 파싱
-    - 문자열을 정제 후 S3 Silver 두 경로에 저장
-    - Kinesis가 트리거하면 자동으로 실행
-    - Bronze → Silver 변환의 핵심
-
-- 담아야 할 내용 순서
-1. 환경변수 로드
-   └─ S3_BUCKET · AWS_REGION 읽기
-
-2. S3 클라이언트 초기화
-   └─ boto3.client("s3") 생성
-
-3. 원본 문자열 파싱 함수
-   └─ 구분자(|) 로 분리 → payload 추출
-   └─ 구분자(^) 로 분리 → 필드 추출
-   └─ 추출 필드:
-       stock_code  · trade_time · trade_price
-       trade_volume · open_price · prev_close
-   └─ 문자열 → int / float 타입 변환
-   └─ 유효성 검증 (결측값 · 이상값 제거)
-   └─ 장외시간 데이터 필터링
-       market_config.py 의 is_market_time() 활용
-
-4. Silver 체결 데이터 저장 함수
-   └─ 파싱 결과 → pandas DataFrame 변환
-   └─ Parquet 포맷으로 변환
-   └─ path_config.py 의 silver_trade_key() 로 경로 생성
-   └─ S3 PutObject 로 Silver 체결 경로에 저장
-
-5. Silver 일봉 데이터 저장 함수 (★ 핵심)
-   └─ 당일 첫 체결가 → open_price 추출
-   └─ 이미 오늘 시가가 저장됐는지 확인
-       └─ 저장됐으면 skip (하루에 한 번만 저장)
-       └─ 없으면 S3 daily/ 경로에 저장
-   └─ path_config.py 의 silver_daily_key() 로 경로 생성
-   └─ 과거 종가 데이터와 합쳐서 저장
-
-6. Kinesis 이벤트 핸들러 (Lambda 진입점)
-   └─ Kinesis 레코드에서 S3 이벤트 정보 추출
-   └─ S3 Bronze 에서 원본 파일 읽기
-   └─ 3번 파싱 함수 호출
-   └─ 4번 Silver 체결 저장 함수 호출
-   └─ 5번 Silver 일봉 저장 함수 호출
-
-7. 로깅
-   └─ 파싱 성공 · 실패 로그
-   └─ Silver 적재 성공 · 실패 로그
-"""
-
+# ===============================
+# lambda_clean.handler
+# bronze to silver trade/silver daily
+# lambda_clean(silver layer) 정제 · 배포 · 테스트
+# ===============================
 
 # 1. 필요한 라이브러리 import
 import os

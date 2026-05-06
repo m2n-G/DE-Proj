@@ -38,6 +38,7 @@ MA_BASE = "daily"
 MA_CONFIG = {
     "005930": {"short": 5, "long": 20},
     "000660": {"short": 20, "long": 60},
+    "005380": {"short": 10, "long": 30},
 }
 
 

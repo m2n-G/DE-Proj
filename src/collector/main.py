@@ -1,4 +1,4 @@
-''' main.py
+"""main.py
 - 의미와 역할
     auth.py · websocket_client.py를 조립해서 전체 수집 흐름을 실행하는 파일이에요. 
     토큰을 발급받고 WebSocket을 연결한 뒤, 수신된 데이터를 Kafka 토픽에 발행하는 역할을 해요. 
@@ -27,13 +27,16 @@
 
     6. 로깅
     └─ 전체 흐름 시작 · 종료 로그
+"""
 
-실행 방법
+# =========================
+# 실행 방법
+# =========================
 """
     python -m src.collector.main
-"""    
+"""
+# =========================
 
-'''
 import datetime
 import logging
 from datetime import date
