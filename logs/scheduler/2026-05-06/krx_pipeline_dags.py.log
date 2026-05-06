@@ -1,0 +1,273 @@
+[2026-05-06T18:33:12.738+0000] {processor.py:186} INFO - Started process (PID=288) to work on /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:33:12.740+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/krx_pipeline_dags.py for tasks to queue
+[2026-05-06T18:33:12.743+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:33:12.743+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:33:12.849+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:33:12.836+0000] {dagbag.py:387} ERROR - Failed to import: /opt/airflow/dags/krx_pipeline_dags.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 383, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 250, in <module>
+    CONFIG = _load_yaml_config(CONFIG_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 42, in _load_yaml_config
+    with path.open("r", encoding="utf-8") as file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/airflow/config/mwaa_dag_config.yaml'
+[2026-05-06T18:33:12.855+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:33:12.882+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/krx_pipeline_dags.py took 0.150 seconds
+[2026-05-06T18:33:43.046+0000] {processor.py:186} INFO - Started process (PID=300) to work on /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:33:43.048+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/krx_pipeline_dags.py for tasks to queue
+[2026-05-06T18:33:43.050+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:33:43.050+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:33:43.097+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:33:43.087+0000] {dagbag.py:387} ERROR - Failed to import: /opt/airflow/dags/krx_pipeline_dags.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 383, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 250, in <module>
+    CONFIG = _load_yaml_config(CONFIG_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 42, in _load_yaml_config
+    with path.open("r", encoding="utf-8") as file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/airflow/config/mwaa_dag_config.yaml'
+[2026-05-06T18:33:43.101+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:33:43.127+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/krx_pipeline_dags.py took 0.087 seconds
+[2026-05-06T18:34:13.412+0000] {processor.py:186} INFO - Started process (PID=306) to work on /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:34:13.414+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/krx_pipeline_dags.py for tasks to queue
+[2026-05-06T18:34:13.416+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:34:13.416+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:34:13.466+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:34:13.456+0000] {dagbag.py:387} ERROR - Failed to import: /opt/airflow/dags/krx_pipeline_dags.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 383, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 250, in <module>
+    CONFIG = _load_yaml_config(CONFIG_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 42, in _load_yaml_config
+    with path.open("r", encoding="utf-8") as file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/airflow/config/mwaa_dag_config.yaml'
+[2026-05-06T18:34:13.469+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:34:13.489+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/krx_pipeline_dags.py took 0.084 seconds
+[2026-05-06T18:34:43.858+0000] {processor.py:186} INFO - Started process (PID=319) to work on /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:34:43.859+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/krx_pipeline_dags.py for tasks to queue
+[2026-05-06T18:34:43.861+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:34:43.861+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:34:43.885+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:34:43.881+0000] {dagbag.py:387} ERROR - Failed to import: /opt/airflow/dags/krx_pipeline_dags.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 383, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 250, in <module>
+    CONFIG = _load_yaml_config(CONFIG_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 42, in _load_yaml_config
+    with path.open("r", encoding="utf-8") as file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/airflow/config/mwaa_dag_config.yaml'
+[2026-05-06T18:34:43.887+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:34:43.908+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/krx_pipeline_dags.py took 0.055 seconds
+[2026-05-06T18:35:14.175+0000] {processor.py:186} INFO - Started process (PID=346) to work on /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:35:14.177+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/krx_pipeline_dags.py for tasks to queue
+[2026-05-06T18:35:14.179+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:35:14.179+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:35:14.212+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:35:14.205+0000] {dagbag.py:387} ERROR - Failed to import: /opt/airflow/dags/krx_pipeline_dags.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 383, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 250, in <module>
+    CONFIG = _load_yaml_config(CONFIG_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 42, in _load_yaml_config
+    with path.open("r", encoding="utf-8") as file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/airflow/config/mwaa_dag_config.yaml'
+[2026-05-06T18:35:14.215+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:35:14.240+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/krx_pipeline_dags.py took 0.070 seconds
+[2026-05-06T18:35:44.590+0000] {processor.py:186} INFO - Started process (PID=359) to work on /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:35:44.592+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/krx_pipeline_dags.py for tasks to queue
+[2026-05-06T18:35:44.595+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:35:44.595+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:35:44.642+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:35:44.632+0000] {dagbag.py:387} ERROR - Failed to import: /opt/airflow/dags/krx_pipeline_dags.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 383, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 250, in <module>
+    CONFIG = _load_yaml_config(CONFIG_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 42, in _load_yaml_config
+    with path.open("r", encoding="utf-8") as file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/airflow/config/mwaa_dag_config.yaml'
+[2026-05-06T18:35:44.645+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:35:44.663+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/krx_pipeline_dags.py took 0.078 seconds
+[2026-05-06T18:36:14.935+0000] {processor.py:186} INFO - Started process (PID=372) to work on /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:36:14.937+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/krx_pipeline_dags.py for tasks to queue
+[2026-05-06T18:36:14.939+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:36:14.939+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:36:14.996+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:36:14.983+0000] {dagbag.py:387} ERROR - Failed to import: /opt/airflow/dags/krx_pipeline_dags.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 383, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 250, in <module>
+    CONFIG = _load_yaml_config(CONFIG_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 42, in _load_yaml_config
+    with path.open("r", encoding="utf-8") as file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/airflow/config/mwaa_dag_config.yaml'
+[2026-05-06T18:36:15.001+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:36:15.024+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/krx_pipeline_dags.py took 0.096 seconds
+[2026-05-06T18:36:45.348+0000] {processor.py:186} INFO - Started process (PID=385) to work on /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:36:45.349+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/krx_pipeline_dags.py for tasks to queue
+[2026-05-06T18:36:45.352+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:36:45.351+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:36:45.384+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:36:45.377+0000] {dagbag.py:387} ERROR - Failed to import: /opt/airflow/dags/krx_pipeline_dags.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 383, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 250, in <module>
+    CONFIG = _load_yaml_config(CONFIG_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 42, in _load_yaml_config
+    with path.open("r", encoding="utf-8") as file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/airflow/config/mwaa_dag_config.yaml'
+[2026-05-06T18:36:45.388+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:36:45.405+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/krx_pipeline_dags.py took 0.063 seconds
+[2026-05-06T18:37:15.730+0000] {processor.py:186} INFO - Started process (PID=398) to work on /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:37:15.731+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/krx_pipeline_dags.py for tasks to queue
+[2026-05-06T18:37:15.734+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:37:15.733+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:37:15.767+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:37:15.759+0000] {dagbag.py:387} ERROR - Failed to import: /opt/airflow/dags/krx_pipeline_dags.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 383, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 250, in <module>
+    CONFIG = _load_yaml_config(CONFIG_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 42, in _load_yaml_config
+    with path.open("r", encoding="utf-8") as file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/airflow/config/mwaa_dag_config.yaml'
+[2026-05-06T18:37:15.770+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:37:15.787+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/krx_pipeline_dags.py took 0.061 seconds
+[2026-05-06T18:37:46.060+0000] {processor.py:186} INFO - Started process (PID=411) to work on /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:37:46.062+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/krx_pipeline_dags.py for tasks to queue
+[2026-05-06T18:37:46.065+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:37:46.064+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:37:46.100+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:37:46.092+0000] {dagbag.py:387} ERROR - Failed to import: /opt/airflow/dags/krx_pipeline_dags.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 383, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 250, in <module>
+    CONFIG = _load_yaml_config(CONFIG_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 42, in _load_yaml_config
+    with path.open("r", encoding="utf-8") as file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/airflow/config/mwaa_dag_config.yaml'
+[2026-05-06T18:37:46.103+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:37:46.120+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/krx_pipeline_dags.py took 0.064 seconds
+[2026-05-06T18:38:16.626+0000] {processor.py:186} INFO - Started process (PID=424) to work on /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:38:16.628+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/krx_pipeline_dags.py for tasks to queue
+[2026-05-06T18:38:16.631+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:38:16.631+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:38:16.669+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:38:16.662+0000] {dagbag.py:387} ERROR - Failed to import: /opt/airflow/dags/krx_pipeline_dags.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 383, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 250, in <module>
+    CONFIG = _load_yaml_config(CONFIG_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 42, in _load_yaml_config
+    with path.open("r", encoding="utf-8") as file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/airflow/config/mwaa_dag_config.yaml'
+[2026-05-06T18:38:16.671+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:38:16.689+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/krx_pipeline_dags.py took 0.070 seconds
+[2026-05-06T18:38:46.956+0000] {processor.py:186} INFO - Started process (PID=437) to work on /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:38:46.957+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/krx_pipeline_dags.py for tasks to queue
+[2026-05-06T18:38:46.961+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:38:46.960+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:38:46.994+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:38:46.987+0000] {dagbag.py:387} ERROR - Failed to import: /opt/airflow/dags/krx_pipeline_dags.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 383, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 250, in <module>
+    CONFIG = _load_yaml_config(CONFIG_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 42, in _load_yaml_config
+    with path.open("r", encoding="utf-8") as file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/airflow/config/mwaa_dag_config.yaml'
+[2026-05-06T18:38:46.997+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:38:47.017+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/krx_pipeline_dags.py took 0.066 seconds
+[2026-05-06T18:39:17.473+0000] {processor.py:186} INFO - Started process (PID=450) to work on /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:39:17.474+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/krx_pipeline_dags.py for tasks to queue
+[2026-05-06T18:39:17.476+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:39:17.475+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:39:17.511+0000] {logging_mixin.py:190} INFO - [2026-05-06T18:39:17.503+0000] {dagbag.py:387} ERROR - Failed to import: /opt/airflow/dags/krx_pipeline_dags.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 383, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 250, in <module>
+    CONFIG = _load_yaml_config(CONFIG_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/krx_pipeline_dags.py", line 42, in _load_yaml_config
+    with path.open("r", encoding="utf-8") as file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/opt/airflow/config/mwaa_dag_config.yaml'
+[2026-05-06T18:39:17.514+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/krx_pipeline_dags.py
+[2026-05-06T18:39:17.532+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/krx_pipeline_dags.py took 0.066 seconds
