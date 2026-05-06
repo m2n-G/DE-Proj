@@ -45,12 +45,11 @@ from dotenv import load_dotenv
 from kafka import KafkaConsumer
 
 from config.path_config import bronze_key
-from src.common.time_utils import now_kst, yyyymmdd
+from src.common.time_utils import now_kst
 from src.collector.kafka_producer import extract_stock_code
 
 
 # 2. 환경변수 로드
-# 환경변수 로드
 load_dotenv(".env")
 
 KAFKA_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP")
@@ -59,6 +58,10 @@ S3_BUCKET       = os.getenv("S3_BUCKET")
 AWS_REGION      = os.getenv("AWS_REGION", "ap-northeast-3")
 AWS_ACCESS_KEY  = os.getenv("AWS_ACCESS_KEY")
 AWS_SECRET_KEY  = os.getenv("AWS_SECRET_KEY")
+KAFKA_CONSUMER_GROUP = os.getenv(
+    "KAFKA_CONSUMER_GROUP",
+    "realtime-trade-consumer-group",
+)
 LOG_LEVEL       = "INFO"
 
 if not KAFKA_BOOTSTRAP:
@@ -73,6 +76,8 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+logging.getLogger("kafka").setLevel(logging.WARNING)
+logging.getLogger("botocore").setLevel(logging.WARNING)
 
 
 # 4. Kafka Consumer 설정 생성 함수
@@ -96,7 +101,7 @@ def build_consumer_config() -> dict:
 
     kafkaconsuemr_config={
         "bootstrap_servers"    : KAFKA_BOOTSTRAP,
-        "group_id"             : "realtime-trade-consumer-group",
+        "group_id"             : KAFKA_CONSUMER_GROUP,
         "auto_offset_reset"    : "earliest",
         "enable_auto_commit"   : False,
         "key_deserializer"     : lambda key: key.decode("utf-8") if key else None,
@@ -129,7 +134,11 @@ def create_consumer(topic: str | None = None) -> KafkaConsumer:
     consumer_config = build_consumer_config()
     kafkaconsumer = KafkaConsumer(topic, **consumer_config)
 
-    logger.info("Kafka Consumer 생성 완료")    
+    logger.info(
+        "Kafka Consumer 생성 완료: topic=%s group_id=%s",
+        topic,
+        KAFKA_CONSUMER_GROUP,
+    )
 
     return kafkaconsumer
 
@@ -279,6 +288,8 @@ def run_consumer() -> None:
 
     consumer  = create_consumer(KAFKA_TOPIC)
     s3_client = create_s3_client()
+
+    logger.info("Kafka consumer is ready; waiting for messages...")
 
     for message in consumer:
         raw_message = message.value

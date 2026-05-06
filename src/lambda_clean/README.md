@@ -24,6 +24,7 @@ KINESIS_ARN=arn:aws:kinesis:ap-northeast-3:827913617635:stream/de-ai-07-processi
 ---
 # S3 → EventBridge → Kinesis 연결
 ## 전체 흐름
+```
 S3 Bronze 파일 적재
         ↓
 S3 이벤트 발생
@@ -31,6 +32,7 @@ S3 이벤트 발생
 EventBridge 규칙 감지
         ↓
 Kinesis processing-stream 으로 전달
+```
 
 ## S3 이벤트 알림 활성화
 ### AWS 콘솔
@@ -41,6 +43,7 @@ Kinesis processing-stream 으로 전달
 → EventBridge → 규칙(Rules) → 규칙 생성
 
 ### 규칙 이름   : s3-bronze-to-kinesis
+```
 이벤트 버스 : default
 이벤트 소스 선택
 ✅ AWS 이벤트 또는 EventBridge 파트너 이벤트
@@ -74,6 +77,7 @@ json{
 실행 역할(IAM)
 ✅ 이 특정 리소스에 대해 새 역할 생성
    └─ EventBridge → Kinesis 권한을 AWS가 자동 설정
+```
 
 ---
 # handler.py
@@ -81,9 +85,10 @@ json{
 - S3 Bronze에 적재된 원본 구분자 문자열을 읽어서 파싱
 - 문자열을 정제 후 S3 Silver 두 경로에 저장
 - Kinesis가 트리거하면 자동으로 실행
-- Bronze → Silver 변환의 핵심이에요.
+- Bronze → Silver 변환의 핵심
 
 ## 담아야 할 내용 순서
+```
 1. 환경변수 로드
    └─ S3_BUCKET · AWS_REGION 읽기
 
@@ -126,11 +131,6 @@ json{
    └─ 파싱 성공 · 실패 로그
    └─ Silver 적재 성공 · 실패 로그
 
-파일 위치
-src/
-  processor/
-    lambda_clean.py   ← 여기
-
 주의사항
 ⚠️ 5번 일봉 저장 함수
    오늘 시가는 하루에 한 번만 저장해야 해요.
@@ -147,3 +147,4 @@ src/
    bid_price   = [5]  78200
    ask_price   = [6]  78600
    prev_close  = [7]  75300
+```
