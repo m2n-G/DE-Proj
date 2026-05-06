@@ -62,11 +62,9 @@ import boto3
 import pandas as pd
 
 from dotenv import load_dotenv
-from typing import Any
-from botocore.exceptions import ClientError
 
 from config.path_config import silver_daily_key, silver_trade_key
-from config.schema_config import KIS_TRADE_RAW_FIELDS, SILVER_TRADE_SCHEMA
+from config.schema_config import KIS_TRADE_RAW_FIELDS
 from src.common.time_utils import now_kst
 
 
@@ -87,9 +85,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # boto3/botocore 내부 로그가 너무 많으면 아래처럼 줄인다.
-# logging.getLogger("boto3").setLevel(logging.WARNING)
-# logging.getLogger("botocore").setLevel(logging.WARNING)
-# logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("boto3").setLevel(logging.WARNING)
+logging.getLogger("botocore").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 # 2. S3 client 생성 함수
@@ -121,7 +119,7 @@ def extract_s3_references_from_event(event: dict) -> list[dict]:
 
     s3_object = []
 
-    for record in event["Records"]:
+    for record in event.get("Records", []):
         if "s3" in record:
             bucket = record["s3"]["bucket"]["name"]
             key = urllib.parse.unquote_plus(record["s3"]["object"]["key"])
@@ -486,8 +484,8 @@ def upsert_silver_daily_record(s3_client, bucket: str, record: dict) -> str | No
     # 그 외 장중 틱 → daily 경로에는 쓰지 않음
     return None
 
-# 6. Lambda handler legacy draft
-def _lambda_handler_legacy_draft(event, context):
+# 6. Kinesis 이벤트 핸들러 (Lambda 진입점)
+def lambda_handler(event, context):
     """
     Lambda 진입점이다.
 
@@ -511,35 +509,6 @@ def _lambda_handler_legacy_draft(event, context):
     # 10. 처리 결과를 results에 담는다.
     # 11. {"statusCode": 200, "body": json.dumps(...)} 형태로 반환한다.
 
-    logger.info("Clean Lambda invoked")
-
-    s3_client = create_s3_client()
-    references = extract_s3_references_from_event(event)
-
-    if not references:
-        raise ValueError("S3 object가 비어있습니다.")
-    
-    for reference in references:
-        raw_message = read_bronze_object(s3_client, S3_BUCKET, reference)
-        raw_records = parse_raw_trade_message(raw_message)
-
-        silver_trade_records = create_silver_trade_records(raw_records)
-        silver_trade_key = write_silver_trade_records(silver_trade_records)
-
-        # 일봉 경로 적재 (신규) — 같은 메시지의 모든 틱에 대해 upsert 시도
-        for record in raw_records:
-            silver_daily_key = upsert_silver_daily_record(s3_client, S3_BUCKET, record)
-
-
-def lambda_handler(event, context):
-    """
-    Lambda entrypoint for Bronze -> Silver cleaning.
-
-    Logs each major processing step so CloudWatch can show:
-    - which Bronze object was processed
-    - how many trade rows were parsed/transformed
-    - which Silver trade/daily objects were written
-    """
     logger.info("Clean Lambda invoked: event_record_count=%s", len(event.get("Records", [])))
 
     s3_client = create_s3_client()
