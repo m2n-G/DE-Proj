@@ -106,6 +106,16 @@ KIS_TRADE_RAW_FIELDS  = [
 
 # Silver 체결 스키마
 SILVER_TRADE_SCHEMA = {
+    "stock_code"   : "string",   # 유가증권 단축 종목코드
+    "trade_time"   : "string",   # 주식 체결 시간 (HHMMSS 형식)
+    "trade_price"  : "int",      # 주식 현재가
+    "volume"       : "int",      # 체결 거래량
+    "open_price"   : "int",      # 당일 시가
+    "prev_close"   : "int",      # 직전 종가
+}
+
+'''
+SILVER_TRADE_SCHEMA = {
     "stock_code"                       : "string",   # 유가증권 단축 종목코드
     "trade_time"                       : "string",   # 주식 체결 시간 (HHMMSS 형식)
     "trade_price"                      : "int",      # 주식 현재가
@@ -153,16 +163,17 @@ SILVER_TRADE_SCHEMA = {
     "market_close_class_code"          : "string",   # 임의종료구분코드
     "vi_standard_price"                : "int",      # 정적VI발동기준가
 }
+'''
 
 # Silver 일봉 스키마
 SILVER_DAILY_SCHEMA = {
-    "stock_code"   : "string",   # string
-    "date"         : "date",     # date
-    "open"         : "int",      # int                    
-    "high"         : "int",      # int      (장중 미확정 시 None)
-    "low"          : "int",      # int      (장중 미확정 시 None)
-    "close"        : "int",      # int      (장중 미확정 시 None)
-    "volume"       : "int"       # int       (장중 미확정 시 None)
+    "stock_code"   : "string",   # 유가증권 단축 종목코드
+    "date"         : "date",     # 주식 체결 날짜
+    "open"         : "int",      # 당일 시가                    
+    "high"         : "int",      # 장 시작부터 현재까지의 누적 최고가      (장중 미확정 시 None)
+    "low"          : "int",      # 장 시작부터 현재까지의 누적 최저가      (장중 미확정 시 None)
+    "close"        : "int",      # 당일 종가                           (장중 미확정 시 None)
+    "volume"       : "int"       # 누적 거래량 (장 시작 ~ 현재까지)       (장중 미확정 시 None)
 }
 
 # Gold 스키마

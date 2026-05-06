@@ -62,8 +62,8 @@ def silver_trade_key(stock_code: str, date: str, hour: int, timestamp: str , msg
     return f"processed/{stock_code}/date={date}/hour={hour:02d}/{stock_code}_{timestamp}_{msg_id}.parquet"
 
 # Silver 일봉 경로 함수
-def silver_daily_key(stock_code: str, date: str, timestamp: str , msg_id: str) -> str:
-    return f"processed/daily/{stock_code}/date={date}/{stock_code}_{timestamp}_{msg_id}_daily.parquet"
+def silver_daily_key(stock_code: str, date: str) -> str:
+    return f"processed/daily/{stock_code}/date={date}/{stock_code}_daily.parquet"
 
 # Gold 시그널 경로 함수
 def gold_signal_key(stock_code: str, date:str, timestamp: str, msg_id: str) -> str:

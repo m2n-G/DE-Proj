@@ -58,10 +58,12 @@ import uuid
 import base64
 import logging
 import urllib.parse
-from typing import Any
 import boto3
 import pandas as pd
+
 from dotenv import load_dotenv
+from typing import Any
+from botocore.exceptions import ClientError
 
 from config.path_config import silver_daily_key, silver_trade_key
 from config.schema_config import KIS_TRADE_RAW_FIELDS, SILVER_TRADE_SCHEMA
@@ -163,15 +165,14 @@ def read_bronze_object(s3_client, bucket: str, key: str) -> str:
     return raw_message
 
 
-# 3-3. 빈 문자열 대비 안전한 변환 함수
-# 
+# 3-3-1. 빈 문자열 대비 안전한 변환 함수
 def safe_cast(val, dtype):
     if val == '':
         return None
     return dtype(val)
 
 
-# 3-4. raw 체결 메시지 파싱 함수
+# 3-3. raw 체결 메시지 파싱 함수
 def parse_raw_trade_message(raw_message: str) -> list[dict]:
     """
     KIS WebSocket raw 체결 문자열을 Silver용 record 목록으로 변환한다.
@@ -223,23 +224,44 @@ def parse_raw_trade_message(raw_message: str) -> list[dict]:
     fields_per_row = len(KIS_TRADE_RAW_FIELDS)
     records        = []
 
-    for i in range(row_count):                          # 1) i = 0                2) i=1                   3) i=2                   ...  n) i = n
-        start = i * fields_per_row                      # 1) start = 0 * 46 = 0   2) start = 1 * 46 = 46   3) start = 2 * 46 = 92   ...  n) start = n * 46 = 46n
-        row = fields[start:start + fields_per_row]      # 1) row = fields[0:46]   2) row = fields[46:92]   3) row = fields[92:138]  ...  n) row = fields[start:start+46]
+    for i in range(row_count):
+        start = i * fields_per_row
+        row = fields[start:start + fields_per_row]
         
         if len(row) < fields_per_row:
             raise ValueError(f"체결 row 필드 수가 부족합니다. expected={fields_per_row}, actual={len(row)}")
 
         # 한투 원본 필드 → 값 변환
         raw_record = {key: safe_cast(val, dtype) for (key, dtype), val in zip(KIS_TRADE_RAW_FIELDS, row)}
-        # 필드명 매핑 (한투 → Silver 컬럼)
-        record = {SILVER_TRADE_SCHEMA.get(k, k): v for k, v in raw_record.items()}
-
-        records.append(record)
+        records.append(raw_record)
 
     return records
 
+# 4-1-1-1. prev_close 계산식
+def calc_prev_close(trade_price, sign, diff):
+    # KIS 전일대비부호: 1 상한, 2 상승, 3 보합, 4 하한, 5 하락
+    if sign in ("1", "2"):
+        return trade_price - diff
+    if sign in ("4", "5"):
+        return trade_price + diff
+    return trade_price
 
+# 4-1-1. silver 실시간 체결 데이터 변환
+# records = parse_raw_trade_message(raw_message)
+def create_silver_trade_records(records: list[dict]) -> list[dict]:
+    silver_records = []
+    for raw in records:
+        silver_records.append({
+            "stock_code":  raw["MKSC_SHRN_ISCD"],
+            "trade_time":  raw["STCK_CNTG_HOUR"],
+            "trade_price": raw["STCK_PRPR"],
+            "volume":      raw["CNTG_VOL"],
+            "open_price":  raw["STCK_OPRC"],
+            "prev_close":  calc_prev_close(
+                raw["STCK_PRPR"], raw["PRDY_VRSS_SIGN"], raw["PRDY_VRSS"],
+            ),
+        })
+    return silver_records
 
 # 4-1. Silver trade S3 key 생성 함수
 def build_silver_trade_object_key(records: list[dict]) -> str:
@@ -258,10 +280,18 @@ def build_silver_trade_object_key(records: list[dict]) -> str:
     # 6. msg_id = uuid.uuid4().hex[:8]
     # 7. silver_trade_key(stock_code, date, hour, timestamp, msg_id)를 호출한다.
     # 8. key를 반환한다.
-    pass
+    stock_code = records[0]['stock_code']
+    now        = now_kst()
+    date       = now.strftime("%Y%m%d")
+    hour       = int(now.strftime("%H"))
+    timestamp  = now.strftime("%H%M%S")
+    msg_id     = uuid.uuid4().hex[:8]
+
+    return silver_trade_key(stock_code, date, hour, timestamp, msg_id)
 
 
 # 4-2. Silver trade 저장 함수
+# records = silver_records
 def write_silver_trade_records(s3_client, bucket: str, records: list[dict]) -> str:
     """
     정제된 체결 records를 S3 Silver trade 경로에 저장한다.
@@ -282,28 +312,182 @@ def write_silver_trade_records(s3_client, bucket: str, records: list[dict]) -> s
     # 4. s3_client.put_object(Bucket=bucket, Key=key, Body=..., ContentType=...) 호출
     # 5. 성공 로그를 남긴다.
     # 6. key를 반환한다.
-    pass
+    key = build_silver_trade_object_key(records)
 
+    df = pd.DataFrame(records)
 
-# 5. Silver daily 저장 함수
-def write_silver_daily_if_needed(s3_client, bucket: str, records: list[dict]) -> str | None:
+    buffer = io.BytesIO()
+    df.to_parquet(buffer, engine="pyarrow", index=False)
+    buffer.seek(0)
+
+    s3_client.put_object(
+        Bucket=bucket,
+        Key=key,
+        Body=buffer.getvalue(),
+        ContentType="application/octet-stream",
+    )
+
+    logger.info("S3 Silver write success: s3://%s/%s", bucket, key)
+    return key
+
+# ============================================================================
+# 5. 일봉 데이터 처리 (Silver daily/)
+# ============================================================================
+# 흐름:
+#   T1) 장 시작 첫 틱  → upsert_silver_daily_record() 가
+#                        기존 행이 없으면 build_open_daily_record() 로 잠정 행 생성
+#   T2) 장 마감 시점   → upsert_silver_daily_record() 가
+#                        기존 행이 있으면 finalize_daily_record() 로 OHLCV 확정
+#   그 외 장중 틱      → daily 경로에는 아무것도 쓰지 않음 (실시간 체결 경로만)
+# ============================================================================
+
+# 5-1. 장 마감 틱 판별 함수
+def is_market_close_tick(record: dict) -> bool:
     """
-    일봉용 Silver 데이터를 필요할 때만 저장한다.
-
-    현재 단계에서는 선택 기능이다.
-    처음에는 pass 또는 None 반환으로 두고, trade Silver 저장이 끝난 뒤 구현한다.
+    체결시간(STCK_CNTG_HOUR, HHMMSS)이 15:30 이후인지 판별.
+    True 면 그 틱을 기준으로 일봉을 확정한다.
     """
-    # TODO:
-    # 1. records[0]에서 stock_code, open_price 등을 꺼낸다.
-    # 2. 오늘 daily 파일이 이미 있는지 확인한다.
-    # 3. 없으면 silver_daily_key()로 key를 만든다.
-    # 4. daily record를 S3에 저장한다.
-    # 5. 저장했으면 key, 저장하지 않았으면 None을 반환한다.
-    pass
+    hhmmss = record.get("STCK_CNTG_HOUR") or ""
+    if len(hhmmss) < 4:
+        return False
+    return hhmmss[:4] >= "1530"
 
 
-# 6. Lambda handler
-def lambda_handler(event, context):
+# 5-2. 영업일자 결정 함수
+def resolve_business_date(record: dict) -> str:
+    """
+    영업일자(YYYYMMDD) 결정.
+      1순위: BSOP_DATE 필드
+      2순위: 현재 KST 시각
+    """
+    bsop = record.get("BSOP_DATE")
+    if bsop and len(bsop) == 8 and str(bsop).isdigit():
+        return str(bsop)
+    return now_kst().strftime("%Y%m%d")
+
+
+# 5-3-1. 잠정 일봉 행 생성 (T1: 장 시작 첫 틱)
+def build_open_daily_record(record: dict) -> dict:
+    """
+    장 시작 첫 틱에서 호출.
+    open 만 채워진 잠정 일봉 행을 만든다.
+    high/low/close/volume 은 장 마감 시점에 finalize_daily_record() 로 채운다.
+    """
+    return {
+        "stock_code": record["MKSC_SHRN_ISCD"],
+        "date":       resolve_business_date(record),
+        "open":       record["STCK_OPRC"],
+        "high":       None,
+        "low":        None,
+        "close":      None,
+        "volume":     None,
+    }
+
+
+# 5-3-2. 일봉 행 확정 (T2: 장 마감 시점)
+def finalize_daily_record(open_row: dict, last_record: dict) -> dict:
+    """
+    장 마감 틱 도달 시 호출.
+    잠정 행(open 만 채워진 상태)에 KIS 누적값(high/low/volume) 과
+    마지막 체결가(close) 를 채워 확정 OHLCV 행으로 만든다.
+    """
+    return {
+        **open_row,
+        "high":   last_record["STCK_HGPR"],   # KIS 누적 최고가
+        "low":    last_record["STCK_LWPR"],   # KIS 누적 최저가
+        "close":  last_record["STCK_PRPR"],   # 마지막 체결가 = 종가
+        "volume": last_record["ACML_VOL"],    # KIS 누적 거래량
+    }
+
+
+# 5-4. Silver daily S3 key 생성 함수
+def build_silver_daily_object_key(daily_row: dict) -> str:
+    """
+    processed/daily/{stock_code}/date={YYYYMMDD}/{stock_code}_daily.parquet
+    """
+    stock_code = daily_row["stock_code"]
+    date       = daily_row["date"]
+    return silver_daily_key(stock_code, date)
+
+
+# 5-5. Silver daily 행 읽기 함수 (기존 잠정 행 조회용)
+def read_silver_daily_record(s3_client, bucket: str, stock_code: str, date: str) -> dict | None:
+    """
+    오늘자 daily 행이 S3 에 이미 있으면 dict 로 반환, 없으면 None.
+    같은 영업일에 잠정 행이 이미 적재됐는지 확인하는 용도.
+    """
+    key = silver_daily_key(stock_code, date)
+    try:
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+    except s3_client.exceptions.NoSuchKey:
+        return None
+
+    buffer = io.BytesIO(response["Body"].read())
+    df = pd.read_parquet(buffer, engine="pyarrow")
+    if df.empty:
+        return None
+
+    # daily Parquet 은 종목당 하루 1행이므로 첫 행만 반환
+    return df.iloc[0].to_dict()
+
+
+# 5-6. Silver daily 저장 함수
+def write_silver_daily_record(s3_client, bucket: str, daily_row: dict) -> str:
+    """
+    잠정 행 또는 확정 행을 daily Parquet 로 덮어쓴다.
+    하루에 종목당 최대 2회 호출됨 (T1 생성, T2 확정).
+    """
+    key = build_silver_daily_object_key(daily_row)
+
+    df = pd.DataFrame([daily_row])
+
+    buffer = io.BytesIO()
+    df.to_parquet(buffer, engine="pyarrow", index=False)
+    buffer.seek(0)
+
+    s3_client.put_object(
+        Bucket=bucket,
+        Key=key,
+        Body=buffer.getvalue(),
+        ContentType="application/octet-stream",
+    )
+
+    logger.info("S3 Silver daily write success: s3://%s/%s", bucket, key)
+    return key
+
+
+# 5-7. Silver daily upsert (라우팅) 함수
+def upsert_silver_daily_record(s3_client, bucket: str, record: dict) -> str | None:
+    """
+    틱 한 건을 받아 daily 경로에 적절히 반영한다.
+
+      - 오늘자 daily 행이 없음          → 잠정 행 생성 (T1)
+      - 있음 + 마감 틱 + 아직 미확정    → 확정 행으로 갱신 (T2)
+      - 그 외 (장중 일반 틱)            → 아무것도 하지 않음
+
+    Returns:
+        쓰기를 수행한 경우 S3 key, 아니면 None.
+    """
+    stock_code = record["MKSC_SHRN_ISCD"]
+    date       = resolve_business_date(record)
+
+    existing = read_silver_daily_record(s3_client, bucket, stock_code, date)
+
+    # T1: 오늘 첫 틱 → 잠정 행 생성
+    if existing is None:
+        daily_row = build_open_daily_record(record)
+        return write_silver_daily_record(s3_client, bucket, daily_row)
+
+    # T2: 마감 틱 도달 & 아직 확정 전 → OHLCV 채워서 확정
+    if is_market_close_tick(record) and existing.get("close") is None:
+        daily_row = finalize_daily_record(existing, record)
+        return write_silver_daily_record(s3_client, bucket, daily_row)
+
+    # 그 외 장중 틱 → daily 경로에는 쓰지 않음
+    return None
+
+# 6. Lambda handler legacy draft
+def _lambda_handler_legacy_draft(event, context):
     """
     Lambda 진입점이다.
 
@@ -326,4 +510,110 @@ def lambda_handler(event, context):
     # 9. write_silver_daily_if_needed() 호출
     # 10. 처리 결과를 results에 담는다.
     # 11. {"statusCode": 200, "body": json.dumps(...)} 형태로 반환한다.
-    pass
+
+    logger.info("Clean Lambda invoked")
+
+    s3_client = create_s3_client()
+    references = extract_s3_references_from_event(event)
+
+    if not references:
+        raise ValueError("S3 object가 비어있습니다.")
+    
+    for reference in references:
+        raw_message = read_bronze_object(s3_client, S3_BUCKET, reference)
+        raw_records = parse_raw_trade_message(raw_message)
+
+        silver_trade_records = create_silver_trade_records(raw_records)
+        silver_trade_key = write_silver_trade_records(silver_trade_records)
+
+        # 일봉 경로 적재 (신규) — 같은 메시지의 모든 틱에 대해 upsert 시도
+        for record in raw_records:
+            silver_daily_key = upsert_silver_daily_record(s3_client, S3_BUCKET, record)
+
+
+def lambda_handler(event, context):
+    """
+    Lambda entrypoint for Bronze -> Silver cleaning.
+
+    Logs each major processing step so CloudWatch can show:
+    - which Bronze object was processed
+    - how many trade rows were parsed/transformed
+    - which Silver trade/daily objects were written
+    """
+    logger.info("Clean Lambda invoked: event_record_count=%s", len(event.get("Records", [])))
+
+    s3_client = create_s3_client()
+    references = extract_s3_references_from_event(event)
+    logger.info("S3 references extracted: count=%s", len(references))
+
+    if not references:
+        logger.warning("No S3 references found in Lambda event")
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"processed": 0, "results": []}, ensure_ascii=False),
+        }
+
+    results = []
+
+    for reference in references:
+        bucket = reference.get("bucket") or S3_BUCKET
+        key = reference["key"]
+
+        logger.info("Processing Bronze object: s3://%s/%s", bucket, key)
+
+        try:
+            raw_message = read_bronze_object(s3_client, bucket, key)
+            logger.info("Bronze object read complete: chars=%s", len(raw_message))
+
+            raw_records = parse_raw_trade_message(raw_message)
+            logger.info("Raw trade parse complete: raw_record_count=%s", len(raw_records))
+
+            silver_trade_records = create_silver_trade_records(raw_records)
+            logger.info(
+                "Silver trade transform complete: silver_record_count=%s",
+                len(silver_trade_records),
+            )
+
+            silver_trade_key = write_silver_trade_records(
+                s3_client,
+                bucket,
+                silver_trade_records,
+            )
+            logger.info("Silver trade write complete: key=%s", silver_trade_key)
+
+            silver_daily_keys = []
+            for raw_record in raw_records:
+                silver_daily_key = upsert_silver_daily_record(s3_client, bucket, raw_record)
+                if silver_daily_key:
+                    silver_daily_keys.append(silver_daily_key)
+                    logger.info("Silver daily upsert complete: key=%s", silver_daily_key)
+
+            if not silver_daily_keys:
+                logger.info("Silver daily upsert skipped: no daily update needed")
+
+            result = {
+                "bronze_bucket": bucket,
+                "bronze_key": key,
+                "silver_trade_key": silver_trade_key,
+                "silver_daily_keys": silver_daily_keys,
+                "raw_record_count": len(raw_records),
+                "silver_record_count": len(silver_trade_records),
+            }
+            results.append(result)
+
+            logger.info(
+                "Clean Lambda object complete: bronze_key=%s silver_trade_key=%s daily_update_count=%s",
+                key,
+                silver_trade_key,
+                len(silver_daily_keys),
+            )
+
+        except Exception:
+            logger.exception("Clean Lambda object failed: s3://%s/%s", bucket, key)
+            raise
+
+    logger.info("Clean Lambda completed: processed=%s", len(results))
+    return {
+        "statusCode": 200,
+        "body": json.dumps({"processed": len(results), "results": results}, ensure_ascii=False),
+    }
