@@ -146,5 +146,169 @@ json{
    trade_volume= [3]  3200 (또는 [5] acml_vol)
    bid_price   = [5]  78200
    ask_price   = [6]  78600
-   prev_close  = [7]  75300
+   prev_close  = [7]  753
 ```
+## lambda_clean 배포 · 테스트
+### 테스트 전략
+```
+저장해둔 체결 데이터
+        ↓
+S3 Bronze 경로에 수동 업로드
+        ↓
+EventBridge 이벤트 발생
+        ↓
+Kinesis 트리거
+        ↓
+Lambda handler.py 실행
+        ↓
+S3 Silver 경로에 Parquet 적재 확인
+```
+### Step 1 — Lambda 함수 생성
+AWS 콘솔
+→ Lambda
+→ 함수 생성
+   - 함수 이름 : de-ai-07-lambda-clean
+   - 런타임    : Python 3.11
+   - 리전      : ap-northeast-3 (오사카)
+   - 실행 역할 : S3 · Kinesis 권한 있는 IAM 역할
+
+→ 함수 계층(layer) 편집
+   - 레이어 추가 → AWS 레이어 선택 → AWSSDKPandas-Python311 색 → 최신 버전 선택 → 추가
+
+### Step 2 — 코드 업로드 상세 설명
+- handler관련 모든 라이브러리를 `zip`으로 변환하여 `Lambda`에 직접 업로드
+1. 패키지 폴더 생성
+```bash
+cd Onedrive/문서/
+
+# 프로젝트 루트에서
+mkdir lambda_clean_package
+```
+
+2. 의존 라이브러리 설치
+```bash
+# 외부 라이브러리 중 작은 것만 설치
+# pandas · pyarrow · boto3 는 Layer 에서 제공
+pip install python-dotenv -t lambda_clean/
+```
+
+3. 필요한 파일 복사
+```bash
+# handler.py 복사
+cp DE-PROJ/src/lambda_clean/handler.py lambda_clean_package/
+
+# config 폴더 복사
+cp -r DE-PROJ/config/ lambda_clean_package/config/
+
+# src/common 복사 (time_utils 등)
+cp -r DE-PROJ/src/common/ lambda_clean_package/src/common/
+```
+4. `ZIP`파일로 압축
+
+5. Lambda 콘솔에서 업로드
+```bash
+AWS 콘솔
+→ Lambda
+→ de-ai-07-lambda-clean 함수 클릭
+→ 코드 탭
+→ 업로드 위치 → .zip 파일
+→ lambda_clean.zip 선택
+→ 저장
+```
+
+6. 코드 소스에서 lambda_clean파일에 있는 파일들 `root`디렉토리로 이동시키기 -> `Undeploy` 클릭
+
+7. 진입점 설정
+```bash
+런타임 설정
+→ 핸들러 : handler.lambda_handler
+           └─ handler   : 파일명 (handler.py)
+           └─ lambda_handler : 함수명
+```
+
+8. 환경변수 설정
+```
+Lambda 콘솔
+→ 구성(Configuration) 탭
+→ 환경 변수(Environment variables)
+→ 편집
+→  S3_BUCKET  = de-ai-07-827913617635-ma-proj
+   LOG_LEVEL  = INFO
+```
+
+9. IAM 권한 확인
+```
+Lambda 콘솔
+→ 구성 탭
+→ 권한(Permissions)
+→ 실행 역할 클릭 (IAM 콘솔로 이동)
+→ 아래 권한 확인
+
+필요한 권한)
+✅ AmazonS3FullAccess      (S3 읽기·쓰기)
+✅ AmazonKinesisFullAccess (Kinesis 읽기)
+✅ AWSLambdaBasicExecutionRole (CloudWatch 로그)
+```
+
+### Step 3 — Kinesis 트리거 연결
+1. 테스트 이벤트 설정
+```
+Lambda 콘솔
+→ 테스트 탭
+→ 새 이벤트 생성
+→ 이벤트 이름 : bronze-s3-test
+→ 템플릿 : S3 Put 선택
+```
+
+2. 테스트 이벤트 JSON 입력
+```json
+{
+  "Records": [
+    {
+      "s3": {
+        "bucket": {
+          "name": "de-ai-07-827913617635-ma-proj"
+        },
+        "object": {
+          "key": "raw/000660/date=20260506/hour=09/000660_093214_06ea550e.log"   //이전에 입력받은 bronze단계의 raw_message s3 url값
+        }
+      }
+    }
+  ]
+}
+```
+
+### Step 4 — 저장해둔 데이터로 테스트
+```
+Lambda 콘솔
+→ 테스트 탭
+→ 테스트 버튼 실행
+```
+- `cloudwatch` 로그 확인
+   - 로그 그룹명 : `/aws/lambda/de-ai-07-lambda-clean`
+   - 로그 스트림탭 확인
+      ```
+         2026-05-06T11:05:14.530Z
+         INIT_START Runtime Version: python:3.11.mainlinev2.v7	Runtime Version ARN: arn:aws:lambda:ap-northeast-3::runtime:a0dd170e909c9230a7e18f978320f0053271b75d0b703c836ab4f98f2e3f6a5a
+
+         INIT_START Runtime Version: python:3.11.mainlinev2.v7 Runtime Version ARN: arn:aws:lambda:ap-northeast-3::runtime:a0dd170e909c9230a7e18f978320f0053271b75d0b703c836ab4f98f2e3f6a5a
+         2026-05-06T11:05:17.096Z
+         START RequestId: 16e11604-4e90-4c28-a32d-9574d231d42c Version: $LATEST
+
+         START RequestId: 16e11604-4e90-4c28-a32d-9574d231d42c Version: $LATEST
+         2026-05-06T11:05:18.316Z
+         END RequestId: 16e11604-4e90-4c28-a32d-9574d231d42c
+
+         END RequestId: 16e11604-4e90-4c28-a32d-9574d231d42c
+         2026-05-06T11:05:18.316Z
+         REPORT RequestId: 16e11604-4e90-4c28-a32d-9574d231d42c	Duration: 1218.36 ms	Billed Duration: 3781 ms	Memory Size: 512 MB	Max Memory Used: 202 MB	Init Duration: 2562.50 ms
+      ```
+- 실제 s3 저장 데이터 확인
+   - 실시간 체결 데이터 : `s3://de-ai-07-827913617635-ma-proj/processed/000660/date=20260506/hour=20/000660_200517_d475e021.parquet`
+      - 실제 데이터 테이블
+         ![alt text](image.png)
+   - 일봉 데이터 : `s3://de-ai-07-827913617635-ma-proj/processed/daily/000660/date=20260506/000660_daily.parquet`
+      - 실제 데이터 테이블
+         ![alt text](image-1.png)
+
+
