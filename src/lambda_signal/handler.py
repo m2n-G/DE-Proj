@@ -230,12 +230,12 @@ def get_ma_pair(stock_code: str, ma_config: dict) -> dict:
         "long": DEFAULT_MA_LONG,
     }
 
+    # _metadata 등 예약 키 제외
+    if stock_code.startswith("_"):
+        return default_pair
     pair = ma_config.get(stock_code, default_pair)
 
-    return {
-        "short": int(pair.get("short", DEFAULT_MA_SHORT)),
-        "long": int(pair.get("long", DEFAULT_MA_LONG)),
-    }
+    return { "short": int(pair.get("short", DEFAULT_MA_SHORT)), "long": int(pair.get("long", DEFAULT_MA_LONG)),}
 
 
 # 4. Silver daily 데이터 로드 함수
@@ -440,10 +440,11 @@ def detect_crossover(ma_result: dict) -> str | None:
     today_short = ma_result["today_short_ma"]
     today_long = ma_result["today_long_ma"]
 
-    if prev_short < prev_long and today_short > today_long:
+    # if prev_short < prev_long and today_short > today_long:
+    if prev_short <= prev_long and today_short > today_long:
         return "golden_cross"
 
-    if prev_short > prev_long and today_short < today_long:
+    if prev_short >= prev_long and today_short < today_long:
         return "dead_cross"
 
     return None
@@ -536,33 +537,33 @@ def format_signal_message(
     # 5. 메시지 문자열 반환
     signal_meta = {
         "golden_cross": {
-            "title": "[Golden Cross Detected]",
-            "action": "Buy signal generated",
+            "title": "🟢 [골든크로스 감지]",
+            "action": "매수 신호 발생",
             "direction": ">",
         },
         "dead_cross": {
-            "title": "[Dead Cross Detected]",
-            "action": "Sell signal generated",
+            "title": "🔴 [데드크로스 감지]",
+            "action": "매도/주의 신호 발생",
             "direction": "<",
         },
     }
     meta = signal_meta.get(
         signal,
         {
-            "title": "[Signal Detected]",
-            "action": "Signal generated",
+            "title": "[신호 감지]",
+            "action": "신호 발생",
             "direction": "",
         },
     )
 
     return (
         f"{meta['title']} {stock_name} ({stock_code})\n"
-        f"Today open : {ma_result['today_open']:,.0f}\n"
-        f"MA combo   : {ma_combo}\n"
-        f"Short MA   : {ma_result['today_short_ma']:,.2f} {meta['direction']} "
-        f"Long MA : {ma_result['today_long_ma']:,.2f}\n"
-        f"Detected   : {detected_at.strftime('%H:%M')}\n"
-        f"-> {meta['action']}"
+        f"오늘 시가  : {ma_result['today_open']:,.0f}원\n"
+        f"MA조합    : {ma_combo}\n"
+        f"단기MA    : {ma_result['today_short_ma']:,.2f} {meta['direction']} "
+        f"장기MA : {ma_result['today_long_ma']:,.2f}\n"
+        f"감지 시각 : {detected_at.strftime('%H:%M')}\n"
+        f"→ {meta['action']}"
     )
 
 
@@ -600,10 +601,41 @@ def publish_signal_notification(
 
     response = sns_client.publish(
         TopicArn=sns_arn,
-        Subject=f"{signal}: {stock_code}",
+        Subject=f"[Stock Signal] {signal}: {stock_code}",
         Message=message,
     )
     logger.info("SNS publish success: stock_code=%s signal=%s", stock_code, signal)
+    return response
+
+
+def send_slack_notification(
+    sns_client,
+    sns_arn: str,
+    stock_code: str,
+    stock_name: str,
+    signal: str,
+    ma_result: dict,
+    ma_combo: str,
+    detected_at,
+) -> dict:
+    """
+    Slack 채널 알림을 발송한다.
+
+    현재 프로젝트 구조에서는 Lambda가 Slack Webhook을 직접 호출하지 않고,
+    SNS Topic으로 publish한 뒤 SNS 구독 또는 AWS Chatbot이 Slack 채널로 전달한다.
+    따라서 이 함수는 Slack 알림 전용 래퍼로 publish_signal_notification()을 호출한다.
+    """
+    response = publish_signal_notification(
+        sns_client=sns_client,
+        sns_arn=sns_arn,
+        stock_code=stock_code,
+        stock_name=stock_name,
+        signal=signal,
+        ma_result=ma_result,
+        ma_combo=ma_combo,
+        detected_at=detected_at,
+    )
+    logger.info("Slack notification requested: stock_code=%s signal=%s", stock_code, signal)
     return response
 
 
@@ -787,7 +819,7 @@ def process_one_stock(
                 ma_combo,
             )
         else:
-            publish_signal_notification(
+            send_slack_notification(
                 sns_client=sns_client,
                 sns_arn=sns_arn,
                 stock_code=stock_code,

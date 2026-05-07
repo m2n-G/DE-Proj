@@ -31,23 +31,19 @@ dags:
   krx_optimizer_daily:
     enabled: true
     dag_id: "krx_optimizer_daily"
-    description: "Optimize moving-average parameters from Silver daily data."
-    schedule: "0 8 * * 1-5"
+    description: "Optimize moving-average parameters after market close."
+    schedule: "30 15 * * 1-5"    # ← 15:30 KST (장 마감)
     start_date: "2026-05-07T00:00:00+09:00"
     tasks:
       - task_id: "check_market_day"
         operator: "python"
         callable: "config.market_config.is_market_day"
-      - task_id: "wait_until_0905"
-        operator: "time_sensor"
-        target_time: "09:05"
       - task_id: "run_optimizer_lambda"
         operator: "lambda"
-        function_name: "lambda-optimizer"
+        function_name: "de-ai-07-lambda-optimizer"  # ← 수정
         payload: {}
     dependencies:
-      - "check_market_day >> wait_until_0905"
-      - "wait_until_0905 >> run_optimizer_lambda"
+      - "check_market_day >> run_optimizer_lambda"
 
   krx_signal_intraday:
     enabled: true
@@ -68,7 +64,7 @@ dags:
         soft_fail: true
       - task_id: "run_signal_lambda"
         operator: "lambda"
-        function_name: "lambda-signal"
+        function_name: "de-ai-07-lambda-signal"  # ← 수정
         payload: {}
     dependencies:
       - "check_market_day >> wait_for_daily_open_files"

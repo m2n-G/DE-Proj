@@ -18,7 +18,6 @@ import json
 import logging
 import math
 import os
-from datetime import datetime
 
 import boto3
 import pandas as pd
@@ -164,7 +163,12 @@ def load_daily_history(
         if not object_date or object_date > end_date:
             continue
 
-        df = _read_parquet_from_s3(s3_client, bucket, key)
+        try:
+            df = _read_parquet_from_s3(s3_client, bucket, key)
+        except Exception:
+            logger.warning("Failed to read parquet, skipping: s3://%s/%s", bucket, key)
+            continue
+
         if df.empty:
             continue
 
@@ -250,6 +254,9 @@ def select_best_ma_pair(
     if not evaluated:
         return None
 
+    # 1순위: 샤프지수 높은 것
+    # 2순위: 총수익률 높은 것
+    # 3순위: MDD 작은 것 (절댓값 기준 오름차순)
     evaluated = sorted(
         evaluated,
         key=lambda row: (row["sharpe"], row["total_return"], -abs(row["max_drawdown"])),
@@ -377,7 +384,9 @@ def write_best_ma_config(s3_client, bucket: str, date: str, config: dict) -> str
         ContentType="application/json; charset=utf-8",
     )
 
-    logger.info("Best MA config write success: s3://%s/%s", bucket, key)
+    logger.info("Best MA config write success: s3://%s/%s processed=%s"
+                , bucket, key, len([r for r in config.items() if not str(r[0]).startswith("_")])
+            )
     return key
 
 
@@ -412,8 +421,9 @@ def lambda_handler(event, context):
 
     results = []
     for stock_code in stock_codes:
-        stock_name = WATCHLIST[stock_code]
-        result = process_one_stock(
+        try:
+            stock_name = WATCHLIST[stock_code]
+            result = process_one_stock(
             s3_client=s3_client,
             bucket=bucket,
             stock_code=stock_code,
@@ -422,7 +432,14 @@ def lambda_handler(event, context):
             candidates=candidates,
             optimize_days=optimize_days,
         )
-        results.append(result)
+            results.append(result)
+        except Exception:
+            logger.exception("Optimizer failed: stock_code=%s", stock_code)
+            results.append({
+                "stock_code": stock_code,
+                "status": "error",
+                "reason": "unexpected_exception",
+            })
 
     best_config = build_best_ma_config(
         date=date,
