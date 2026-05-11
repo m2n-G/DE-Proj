@@ -4,78 +4,6 @@
 # MA 계산 및 크로스 감지
 # ===============================
 
-"""
-1. 환경변수 로드
-   └─ S3_BUCKET · SNS_ARN · LOG_LEVEL 읽기
-
-2. S3 · SNS 클라이언트 초기화
-   └─ boto3.client("s3") 생성
-   └─ boto3.client("sns") 생성
-
-3. 설정 로드 함수
-   └─ signal_config.py 에서 BEST_MA · WATCHLIST 읽기
-   └─ S3 config/ 경로에서 오늘 날짜 best_ma_config.json 읽기
-   └─ 없으면 signal_config.py 기본값 사용
-
-4. Silver daily 데이터 로드 함수
-   └─ S3 daily/ 에서 이전 (MA_LONG - 1)일치 확정 종가 로드
-   └─ 오늘 시가(open_price) 포함
-   └─ pandas DataFrame 으로 반환
-
-5. MA 계산 함수
-   └─ [이전 N-1일 확정 종가] + [오늘 시가] = N개 값
-   └─ pandas rolling(MA_SHORT).mean() → 단기 MA
-   └─ pandas rolling(MA_LONG).mean()  → 장기 MA
-
-   예시) MA5 계산
-   ┌──────────────┬──────────────────────┐
-   │ 2024-01-11   │ 종가 72,000 (확정)   │
-   │ 2024-01-12   │ 종가 73,500 (확정)   │
-   │ 2024-01-13   │ 종가 74,200 (확정)   │
-   │ 2024-01-14   │ 종가 75,300 (확정)   │
-   │ 2024-01-15   │ 시가 75,800 (고정) ★ │
-   └──────────────┴──────────────────────┘
-   → MA5 = 74,160
-
-6. 크로스오버 감지 함수
-   └─ 전일 단기MA < 장기MA & 오늘 단기MA > 장기MA → golden_cross
-   └─ 전일 단기MA > 장기MA & 오늘 단기MA < 장기MA → dead_cross
-   └─ 그 외 → None
-
-7. 중복 방지 함수
-   └─ S3 Gold signal/ 에서 오늘 발송 이력 조회
-   └─ 이미 발송한 종목·신호 조합이면 True 반환 (skip)
-   └─ 없으면 False 반환 (발송)
-
-8. SNS 발행 함수
-   └─ 골든크로스 · 데드크로스 메시지 포맷 생성
-   └─ SNS Publish 호출
-   └─ Slack 알림 메시지 형식:
-      🟢 [골든크로스 감지] 삼성전자 (005930)
-      오늘 시가  : 75,800원
-      MA조합    : MA5/20
-      단기MA    : 74,160 > 장기MA : 73,890
-      감지 시각 : 09:05
-      → 매수 신호 발생
-
-9. Gold 시그널 저장 함수
-   └─ 크로스오버 결과를 S3 Gold signal/ 에 Parquet 으로 저장
-   └─ path_config.py 의 gold_signal_key() 활용
-   └─ date · stock_code · open · MA_S · MA_L · signal · ma_combo 컬럼
-
-10. lambda_handler (Lambda 진입점)
-    └─ def lambda_handler(event, context)
-    └─ WATCHLIST 종목 순회
-    └─ 종목별로 3~9번 함수 순서대로 호출
-    └─ 크로스 발생 & 미발송 → SNS 발행 + Gold 저장
-    └─ 크로스 없음 or 중복  → Gold 저장만
-
-11. 로깅
-    └─ 종목별 MA 계산 결과 로그
-    └─ 크로스오버 감지 · 미감지 로그
-    └─ SNS 발행 성공 · 실패 로그
-"""
-
 # 0. 필요한 라이브러리 import
 import io
 import os
@@ -86,11 +14,13 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import boto3
+import urllib.request
 import pandas as pd
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 from src.common.time_utils import now_kst
+from config.market_config import is_market_time, is_market_day
 from config.path_config import config_key, silver_daily_key, gold_signal_key
 from config.signal_config import WATCHLIST, MA_CONFIG, DEFAULT_MA_SHORT, DEFAULT_MA_LONG
 
@@ -98,10 +28,11 @@ from config.signal_config import WATCHLIST, MA_CONFIG, DEFAULT_MA_SHORT, DEFAULT
 # 1. 환경변수 로드
 load_dotenv(".env")
 
-S3_BUCKET = os.getenv("S3_BUCKET")
-SNS_ARN = os.getenv("SNS_ARN")
-AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-3")
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+S3_BUCKET         = os.getenv("S3_BUCKET")
+SNS_ARN           = os.getenv("SNS_ARN")
+AWS_REGION        = os.getenv("AWS_REGION", "ap-northeast-3")
+LOG_LEVEL         = os.getenv("LOG_LEVEL", "INFO")
+SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 
 # 11. logger 생성
 logging.basicConfig(
@@ -116,8 +47,8 @@ def load_runtime_config() -> dict:
         raise ValueError("S3_BUCKET is required")
 
     return {
-        "bucket": S3_BUCKET,
-        "sns_arn": SNS_ARN,
+        "bucket"   : S3_BUCKET,
+        "sns_arn"  : SNS_ARN,
         "log_level": LOG_LEVEL,
     }
 
@@ -199,13 +130,13 @@ def load_signal_config(s3_client, bucket: str, date: str) -> dict:
     key = config_key(date)
 
     try:
-        response = s3_client.get_object(Bucket=bucket, Key=key)
+        response              = s3_client.get_object(Bucket=bucket, Key=key)
         if not response:
             raise  ValueError("s3가 비워져있습니다.")
         else:
-            silver_obj = response["Body"].read()
+            silver_obj        = response["Body"].read()
             silver_daily_text = silver_obj.decode("utf-8")
-            config = json.loads(silver_daily_text)
+            config            = json.loads(silver_daily_text)
 
             return config
     except Exception:
@@ -227,12 +158,9 @@ def get_ma_pair(stock_code: str, ma_config: dict) -> dict:
     # 3. {"short": ..., "long": ...} 반환
     default_pair = {
         "short": DEFAULT_MA_SHORT,
-        "long": DEFAULT_MA_LONG,
+        "long" : DEFAULT_MA_LONG,
     }
 
-    # _metadata 등 예약 키 제외
-    if stock_code.startswith("_"):
-        return default_pair
     pair = ma_config.get(stock_code, default_pair)
 
     return { "short": int(pair.get("short", DEFAULT_MA_SHORT)), "long": int(pair.get("long", DEFAULT_MA_LONG)),}
@@ -271,8 +199,8 @@ def load_silver_daily_data(
     # 7. 이전 종가 + 오늘 시가를 price_for_ma 컬럼으로 구성
     # 8. DataFrame 반환
     previous_rows = []
-    prefix = f"processed/daily/{stock_code}/"
-    today_key = silver_daily_key(stock_code, date)
+    prefix        = f"processed/daily/{stock_code}/"
+    today_key     = silver_daily_key(stock_code, date)
 
     for key in _list_s3_keys(s3_client, bucket, prefix):
         if not key.endswith(".parquet"):
@@ -293,17 +221,17 @@ def load_silver_daily_data(
         if df.empty or "close" not in df.columns:
             continue
 
-        row = df.iloc[0].to_dict()
+        row         = df.iloc[0].to_dict()
         close_price = row.get("close")
         if pd.isna(close_price):
             continue
 
         previous_rows.append(
             {
-                "date": str(row.get("date") or object_date),
-                "stock_code": stock_code,
+                "date"        : str(row.get("date") or object_date),
+                "stock_code"  : stock_code,
                 "price_for_ma": float(close_price),
-                "source": "close",
+                "source"      : "close",
             }
         )
 
@@ -331,10 +259,10 @@ def load_silver_daily_data(
 
     rows = previous_rows + [
         {
-            "date": str(today_row.get("date") or date),
-            "stock_code": stock_code,
+            "date"        : str(today_row.get("date") or date),
+            "stock_code"  : stock_code,
             "price_for_ma": float(today_open),
-            "source": "open",
+            "source"      : "open",
         }
     ]
 
@@ -385,16 +313,16 @@ def calculate_moving_averages(daily_df, ma_short: int, ma_long: int) -> dict | N
         )
         return None
 
-    prices = df["price_for_ma"]
+    prices   = df["price_for_ma"]
     short_ma = prices.rolling(ma_short).mean()
-    long_ma = prices.rolling(ma_long).mean()
+    long_ma  = prices.rolling(ma_long).mean()
 
     values = {
-        "prev_short_ma": short_ma.iloc[-2],
-        "prev_long_ma": long_ma.iloc[-2],
+        "prev_short_ma" : short_ma.iloc[-2],
+        "prev_long_ma"  : long_ma.iloc[-2],
         "today_short_ma": short_ma.iloc[-1],
-        "today_long_ma": long_ma.iloc[-1],
-        "today_open": prices.iloc[-1],
+        "today_long_ma" : long_ma.iloc[-1],
+        "today_open"    : prices.iloc[-1],
     }
 
     if any(pd.isna(value) for value in values.values()):
@@ -402,11 +330,11 @@ def calculate_moving_averages(daily_df, ma_short: int, ma_long: int) -> dict | N
         return None
 
     return {
-        "prev_short_ma": float(values["prev_short_ma"]),
-        "prev_long_ma": float(values["prev_long_ma"]),
+        "prev_short_ma" : float(values["prev_short_ma"]),
+        "prev_long_ma"  : float(values["prev_long_ma"]),
         "today_short_ma": float(values["today_short_ma"]),
-        "today_long_ma": float(values["today_long_ma"]),
-        "today_open": float(values["today_open"]),
+        "today_long_ma" : float(values["today_long_ma"]),
+        "today_open"    : float(values["today_open"]),
     }
 
 
@@ -435,10 +363,10 @@ def detect_crossover(ma_result: dict) -> str | None:
     if not ma_result:
         return None
 
-    prev_short = ma_result["prev_short_ma"]
-    prev_long = ma_result["prev_long_ma"]
+    prev_short  = ma_result["prev_short_ma"]
+    prev_long   = ma_result["prev_long_ma"]
     today_short = ma_result["today_short_ma"]
-    today_long = ma_result["today_long_ma"]
+    today_long  = ma_result["today_long_ma"]
 
     # if prev_short < prev_long and today_short > today_long:
     if prev_short <= prev_long and today_short > today_long:
@@ -513,11 +441,11 @@ def signal_already_sent(
 def format_signal_message(
     stock_code: str,
     stock_name: str,
-    signal: str,
-    ma_result: dict,
-    ma_combo: str,
+    signal    : str,
+    ma_result : dict,
+    ma_combo  : str,
     detected_at,
-) -> str:
+) -> dict:
     """
     Slack으로 전달될 알림 메시지를 만든다.
 
@@ -537,47 +465,48 @@ def format_signal_message(
     # 5. 메시지 문자열 반환
     signal_meta = {
         "golden_cross": {
-            "title": "🟢 [골든크로스 감지]",
-            "action": "매수 신호 발생",
+            "emoji"    : "🟢",
+            "title"    : "골든크로스 감지",
+            "action"   : "매수 신호 발생",
             "direction": ">",
         },
         "dead_cross": {
-            "title": "🔴 [데드크로스 감지]",
-            "action": "매도/주의 신호 발생",
+            "emoji"    : "🔴",
+            "title"    : "데드크로스 감지",
+            "action"   : "매도 신호 발생",
             "direction": "<",
         },
     }
-    meta = signal_meta.get(
-        signal,
-        {
-            "title": "[신호 감지]",
-            "action": "신호 발생",
-            "direction": "",
-        },
-    )
+    meta = signal_meta.get(signal, {
+        "emoji"    : "⚪",
+        "title"    : "시그널 감지",
+        "action"   : "신호 발생",
+        "direction": "",
+    })
 
-    return (
-        f"{meta['title']} {stock_name} ({stock_code})\n"
+    text = (
+        f"{meta['emoji']} [{meta['title']}] {stock_name} ({stock_code})\n"
         f"오늘 시가  : {ma_result['today_open']:,.0f}원\n"
         f"MA조합    : {ma_combo}\n"
-        f"단기MA    : {ma_result['today_short_ma']:,.2f} {meta['direction']} "
+        f"단기MA    : {ma_result['today_short_ma']:,.2f} "
+        f"{meta['direction']} "
         f"장기MA : {ma_result['today_long_ma']:,.2f}\n"
         f"감지 시각 : {detected_at.strftime('%H:%M')}\n"
         f"→ {meta['action']}"
     )
 
+    return {"text": text}
+
 
 # 8. SNS 발행 함수
 def publish_signal_notification(
-    sns_client,
-    sns_arn: str,
-    stock_code: str,
-    stock_name: str,
-    signal: str,
-    ma_result: dict,
-    ma_combo: str,
+    stock_code  : str,
+    stock_name  : str,
+    signal      : str,
+    ma_result   : dict,
+    ma_combo    : str,
     detected_at,
-) -> dict:
+) -> None:
     """
     SNS Topic으로 신호 알림을 발행한다.
     """
@@ -587,68 +516,45 @@ def publish_signal_notification(
     # 3. sns_client.publish(...) 호출
     # 4. 성공 로그 남기기
     # 5. publish response 반환
-    if not sns_arn:
-        raise ValueError("SNS_ARN is required to publish signal notifications")
+    if not SLACK_WEBHOOK_URL:
+        logger.warning("SLACK_WEBHOOK_URL 이 없어서 알림 skip")
+        return
 
-    message = format_signal_message(
-        stock_code=stock_code,
-        stock_name=stock_name,
-        signal=signal,
-        ma_result=ma_result,
-        ma_combo=ma_combo,
-        detected_at=detected_at,
+    payload = format_signal_message(
+        stock_code  = stock_code,
+        stock_name  = stock_name,
+        signal      = signal,
+        ma_result   = ma_result,
+        ma_combo    = ma_combo,
+        detected_at = detected_at,
     )
 
-    response = sns_client.publish(
-        TopicArn=sns_arn,
-        Subject=f"[Stock Signal] {signal}: {stock_code}",
-        Message=message,
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+
+    req = urllib.request.Request(
+        SLACK_WEBHOOK_URL,
+        data    = body,
+        headers = {"Content-Type": "application/json"},
+        method  = "POST",
     )
-    logger.info("SNS publish success: stock_code=%s signal=%s", stock_code, signal)
-    return response
 
-
-def send_slack_notification(
-    sns_client,
-    sns_arn: str,
-    stock_code: str,
-    stock_name: str,
-    signal: str,
-    ma_result: dict,
-    ma_combo: str,
-    detected_at,
-) -> dict:
-    """
-    Slack 채널 알림을 발송한다.
-
-    현재 프로젝트 구조에서는 Lambda가 Slack Webhook을 직접 호출하지 않고,
-    SNS Topic으로 publish한 뒤 SNS 구독 또는 AWS Chatbot이 Slack 채널로 전달한다.
-    따라서 이 함수는 Slack 알림 전용 래퍼로 publish_signal_notification()을 호출한다.
-    """
-    response = publish_signal_notification(
-        sns_client=sns_client,
-        sns_arn=sns_arn,
-        stock_code=stock_code,
-        stock_name=stock_name,
-        signal=signal,
-        ma_result=ma_result,
-        ma_combo=ma_combo,
-        detected_at=detected_at,
-    )
-    logger.info("Slack notification requested: stock_code=%s signal=%s", stock_code, signal)
-    return response
+    with urllib.request.urlopen(req) as response:
+        logger.info(
+            "Slack 알림 발송 성공: stock_code=%s signal=%s status=%s",
+            stock_code, signal, response.status,
+        )
 
 
 # 9-1. Gold signal record 생성 함수
 def build_signal_record(
-    stock_code: str,
-    stock_name: str,
-    date: str,
-    signal: str | None,
-    ma_short: int,
-    ma_long: int,
-    ma_result: dict | None,
-    notified: bool,
+    stock_code : str,
+    stock_name : str,
+    date       : str,
+    signal     : str | None,
+    ma_short   : int,
+    ma_long    : int,
+    ma_result  : dict | None,
+    notified   : bool,
     detected_at,
 ) -> dict:
     """
@@ -675,17 +581,17 @@ def build_signal_record(
     ma_combo = f"MA{ma_short}/{ma_long}"
 
     return {
-        "date": date,
+        "date"      : date,
         "stock_code": stock_code,
         "stock_name": stock_name,
-        "open": None if ma_result is None else ma_result["today_open"],
-        "ma_short": ma_short,
-        "ma_long": ma_long,
-        "short_ma": None if ma_result is None else ma_result["today_short_ma"],
-        "long_ma": None if ma_result is None else ma_result["today_long_ma"],
-        "signal": signal,
-        "ma_combo": ma_combo,
-        "notified": notified,
+        "open"      : None if ma_result is None else ma_result["today_open"],
+        "ma_short"  : ma_short,
+        "ma_long"   : ma_long,
+        "short_ma"  : None if ma_result is None else ma_result["today_short_ma"],
+        "long_ma"   : None if ma_result is None else ma_result["today_long_ma"],
+        "signal"    : signal,
+        "ma_combo"  : ma_combo,
+        "notified"  : notified,
         "detected_at": detected_at.isoformat(),
     }
 
@@ -708,20 +614,20 @@ def write_gold_signal_record(s3_client, bucket: str, record: dict) -> str:
     # 7. 성공 로그
     # 8. key 반환
     detected_at = datetime.fromisoformat(record["detected_at"])
-    timestamp = detected_at.strftime("%H%M%S")
-    msg_id = uuid.uuid4().hex[:8]
-    key = gold_signal_key(record["stock_code"], record["date"], timestamp, msg_id)
+    timestamp   = detected_at.strftime("%H%M%S")
+    msg_id      = uuid.uuid4().hex[:8]
+    key         = gold_signal_key(record["stock_code"], record["date"], timestamp, msg_id)
 
-    df = pd.DataFrame([record])
+    df     = pd.DataFrame([record])
     buffer = io.BytesIO()
     df.to_parquet(buffer, engine="pyarrow", index=False)
     buffer.seek(0)
 
     s3_client.put_object(
-        Bucket=bucket,
-        Key=key,
-        Body=buffer.getvalue(),
-        ContentType="application/octet-stream",
+        Bucket      = bucket,
+        Key         = key,
+        Body        = buffer.getvalue(),
+        ContentType = "application/octet-stream",
     )
 
     logger.info("S3 Gold signal write success: s3://%s/%s", bucket, key)
@@ -730,14 +636,12 @@ def write_gold_signal_record(s3_client, bucket: str, record: dict) -> str:
 
 # 10-1. 종목 1개 처리 함수
 def process_one_stock(
-    s3_client,
-    sns_client,
-    bucket: str,
-    sns_arn: str,
-    stock_code: str,
-    stock_name: str,
-    ma_config: dict,
-    date: str,
+    s3_client  ,
+    bucket     : str,
+    stock_code : str,
+    stock_name : str,
+    ma_config  : dict,
+    date       : str,
     detected_at,
 ) -> dict:
     """
@@ -764,17 +668,17 @@ def process_one_stock(
     # 8. build_signal_record(...) 호출
     # 9. write_gold_signal_record(...) 호출
     # 10. 결과 dict 반환
-    ma_pair = get_ma_pair(stock_code, ma_config)
+    ma_pair  = get_ma_pair(stock_code, ma_config)
     ma_short = int(ma_pair["short"])
-    ma_long = int(ma_pair["long"])
+    ma_long  = int(ma_pair["long"])
     ma_combo = f"MA{ma_short}/{ma_long}"
 
     daily_df = load_silver_daily_data(
-        s3_client=s3_client,
-        bucket=bucket,
-        stock_code=stock_code,
-        ma_long=ma_long,
-        date=date,
+        s3_client  = s3_client,
+        bucket     = bucket,
+        stock_code = stock_code,
+        ma_long    = ma_long,
+        date       = date,
     )
 
     ma_result = calculate_moving_averages(daily_df, ma_short, ma_long)
@@ -783,9 +687,9 @@ def process_one_stock(
         return {
             "stock_code": stock_code,
             "stock_name": stock_name,
-            "status": "skipped",
-            "reason": "not_enough_daily_data_or_today_open_missing",
-            "ma_combo": ma_combo,
+            "status"    : "skipped",
+            "reason"    : "not_enough_daily_data_or_today_open_missing",
+            "ma_combo"  : ma_combo,
         }
 
     signal = detect_crossover(ma_result)
@@ -798,68 +702,64 @@ def process_one_stock(
         signal,
     )
 
-    notified = False
+    notified  = False
     duplicate = False
 
     if signal:
         duplicate = signal_already_sent(
-            s3_client=s3_client,
-            bucket=bucket,
-            stock_code=stock_code,
-            date=date,
-            signal=signal,
-            ma_combo=ma_combo,
+            s3_client  = s3_client,
+            bucket     = bucket,
+            stock_code = stock_code,
+            date       = date,
+            signal     = signal,
+            ma_combo   = ma_combo,
         )
 
         if duplicate:
             logger.info(
                 "Signal notification skipped as duplicate: stock_code=%s signal=%s ma_combo=%s",
-                stock_code,
-                signal,
-                ma_combo,
+                stock_code, signal, ma_combo,
             )
         else:
-            send_slack_notification(
-                sns_client=sns_client,
-                sns_arn=sns_arn,
-                stock_code=stock_code,
-                stock_name=stock_name,
-                signal=signal,
-                ma_result=ma_result,
-                ma_combo=ma_combo,
-                detected_at=detected_at,
+            publish_signal_notification(
+                stock_code  = stock_code,
+                stock_name  = stock_name,
+                signal      = signal,
+                ma_result   = ma_result,
+                ma_combo    = ma_combo,
+                detected_at = detected_at,
             )
             notified = True
     else:
         logger.info("No crossover detected: stock_code=%s ma_combo=%s", stock_code, ma_combo)
 
-    record = build_signal_record(
-        stock_code=stock_code,
-        stock_name=stock_name,
-        date=date,
-        signal=signal,
-        ma_short=ma_short,
-        ma_long=ma_long,
-        ma_result=ma_result,
-        notified=notified,
-        detected_at=detected_at,
+    record   = build_signal_record(
+        stock_code  = stock_code,
+        stock_name  = stock_name,
+        date        = date,
+        signal      = signal,
+        ma_short    = ma_short,
+        ma_long     = ma_long,
+        ma_result   = ma_result,
+        notified    = notified,
+        detected_at = detected_at,
     )
     gold_key = write_gold_signal_record(s3_client, bucket, record)
 
     return {
         "stock_code": stock_code,
         "stock_name": stock_name,
-        "status": "processed",
-        "signal": signal,
-        "notified": notified,
-        "duplicate": duplicate,
-        "ma_combo": ma_combo,
-        "gold_key": gold_key,
+        "status"    : "processed",
+        "signal"    : signal,
+        "notified"  : notified,
+        "duplicate" : duplicate,
+        "ma_combo"  : ma_combo,
+        "gold_key"  : gold_key,
     }
 
 
 # 10. Lambda 진입점
-if False:
+def lambda_handler(event, context):
     """
     Lambda entrypoint.
 
@@ -884,37 +784,41 @@ if False:
     # 10. 결과를 results에 append
     # 11. 종목별 실패는 logger.exception 후 정책에 따라 계속/중단 결정
     # 12. {"statusCode": 200, "body": json.dumps(...)} 반환
-    pass
-
-
-def lambda_handler(event, context):
     logger.info("Signal Lambda invoked")
 
-    detected_at = now_kst()
+    event = event or {}
+    force = event.get("force", False)
+
+    detected_at  = now_kst()
+    today        = detected_at.date()
+    current_time = detected_at.time()
+
+    # 장외시간 체크
+    if not force:
+        if not is_market_time(current_time) or not is_market_day(today):
+            logger.info("장외시간 → skip")
+            return {"statusCode": 200, "body": "skipped"}
+
     date = detected_at.strftime("%Y%m%d")
 
-    runtime = load_runtime_config()
-    bucket = runtime["bucket"]
-    sns_arn = runtime["sns_arn"]
+    runtime  = load_runtime_config()
+    bucket   = runtime["bucket"]
 
     s3_client = create_s3_client()
-    sns_client = create_sns_client()
 
     ma_config = load_signal_config(s3_client, bucket, date)
-    results = []
+    results   = []
 
     for stock_code, stock_name in WATCHLIST.items():
         try:
             result = process_one_stock(
-                s3_client=s3_client,
-                sns_client=sns_client,
-                bucket=bucket,
-                sns_arn=sns_arn,
-                stock_code=stock_code,
-                stock_name=stock_name,
-                ma_config=ma_config,
-                date=date,
-                detected_at=detected_at,
+                s3_client  = s3_client,
+                bucket     = bucket,
+                stock_code = stock_code,
+                stock_name = stock_name,
+                ma_config  = ma_config,
+                date       = date,
+                detected_at= detected_at,
             )
             results.append(result)
         except Exception:
@@ -924,5 +828,8 @@ def lambda_handler(event, context):
     logger.info("Signal Lambda completed: processed=%s", len(results))
     return {
         "statusCode": 200,
-        "body": json.dumps({"processed": len(results), "results": results}, ensure_ascii=False),
+        "body": json.dumps(
+            {"processed": len(results), "results": results},
+            ensure_ascii=False,
+        ),
     }

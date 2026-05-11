@@ -22,6 +22,7 @@ import os
 import boto3
 import pandas as pd
 from botocore.exceptions import ClientError
+from datetime import datetime
 
 from config import signal_config
 from config.path_config import config_key
@@ -439,6 +440,7 @@ def lambda_handler(event, context):
                 "stock_code": stock_code,
                 "status": "error",
                 "reason": "unexpected_exception",
+                "best": fallback_ma_pair(stock_code),  # ← 추가
             })
 
     best_config = build_best_ma_config(
