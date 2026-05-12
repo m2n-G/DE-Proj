@@ -1,0 +1,18 @@
+apiVersion: 1
+datasources:
+  - name: Amazon CloudWatch
+    type: cloudwatch
+    access: proxy
+    jsonData:
+      authType: keys
+      defaultRegion: ap-northeast-3
+      logGroups:
+        - arn: arn:aws:logs:ap-northeast-3:827913617635:log-group:/aws/lambda/de-ai-07-lambda-signal
+          name: /aws/lambda/de-ai-07-lambda-signal
+        - arn: arn:aws:logs:ap-northeast-3:827913617635:log-group:/aws/lambda/de-ai-07-lambda-clean
+          name: /aws/lambda/de-ai-07-lambda-clean
+        - arn: arn:aws:logs:ap-northeast-3:827913617635:log-group:/aws/lambda/de-ai-07-lambda-optimizer
+          name: /aws/lambda/de-ai-07-lambda-optimizer
+    secureJsonData:
+      accessKey: $AWS_ACCESS_KEY_ID
+      secretKey: $AWS_SECRET_ACCESS_KEY

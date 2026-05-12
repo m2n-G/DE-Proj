@@ -21,52 +21,29 @@ if not S3_BUCKET:
 
 s3 = boto3.client("s3", region_name=AWS_REGION)
 
-# 61개 종가 데이터 (MA60 까지 처리 가능 + 전일 비교용 +1)
-# 앞부분 낮음 → 뒷부분 높음 → 골든크로스 발생 패턴
-# 전일까지 낮게 유지하다가 오늘 시가에 급등
-prices = [
-    50000, 50000, 50000, 50000, 50000,
-    50000, 50000, 50000, 50000, 50000,
-    50000, 50000, 50000, 50000, 50000,
-    50000, 50000, 50000, 50000, 50000,
-    50000, 50000, 50000, 50000, 50000,
-    50000, 50000, 50000, 50000, 50000,
-    50000, 50000, 50000, 50000, 50000,
-    50000, 50000, 50000, 50000, 50000,
-    50000, 50000, 50000, 50000, 50000,
-    50000, 50000, 50000, 50000, 50000,
-    50000, 50000, 50000, 50000, 50000,
-    50000, 40000, 40000, 40000, 40000, 40000,
-]
+# 5/9 ~ 5/12 추가 더미 데이터
+# 골든크로스 이후 데드크로스가 발생하도록 설계
+# 5/9 ~ 5/12: 급락 → 데드크로스 발생
 
-today     = datetime.now()
-today_str = today.strftime("%Y%m%d")
+additional_dates_prices = {
+    "20260509": {"close": 55000, "open": 56000},  # 급락 시작
+    "20260510": {"close": 40000, "open": 41000},  # 계속 하락
+    "20260511": {"close": 35000, "open": 36000},  # 계속 하락
+    "20260512": {"close": 30000, "open": 31000},  # 데드크로스 발생
+}
 
-# 오늘 이전 영업일 61개 생성
-dates = []
-i = len(prices) + 30  # 여유분 포함해서 검색
-while len(dates) < len(prices):
-    d = today - timedelta(days=i)
-    if d.weekday() < 5:
-        dates.append(d.strftime("%Y%m%d"))
-    i -= 1
-
-dates  = sorted(dates)
-dates  = [d for d in dates if d < today_str]
-prices = prices[:len(dates)]
-
-# 과거 종가 업로드
 for stock_code in WATCHLIST.keys():
-    print(f"\n📌 {stock_code} ({WATCHLIST[stock_code]}) 과거 데이터 업로드 중...")
+    print(f"\n📌 {stock_code} ({WATCHLIST[stock_code]}) 추가 데이터 업로드 중...")
 
-    for date, close_price in zip(dates, prices):
+    for date, price_info in additional_dates_prices.items():
+        # 과거 종가 데이터 (확정)
         row = {
             "stock_code" : stock_code,
             "date"       : date,
-            "open"       : close_price - 500,
-            "high"       : close_price + 500,
-            "low"        : close_price - 1000,
-            "close"      : close_price,
+            "open"       : price_info["open"],
+            "high"       : price_info["open"] + 500,
+            "low"        : price_info["close"] - 1000,
+            "close"      : price_info["close"],
             "volume"     : 10000000,
         }
         df     = pd.DataFrame([row])
@@ -81,11 +58,11 @@ for stock_code in WATCHLIST.keys():
             Body        = buffer.getvalue(),
             ContentType = "application/octet-stream",
         )
+        print(f"  ✅ {date} 업로드 완료 (close={price_info['close']:,})")
 
-    print(f"  ✅ {len(dates)}개 업로드 완료")
-
-# 오늘 시가 업로드
-today_open_price = 90000  # 상승 추세 유지
+# 오늘(5/12) 시가도 업로드 (데드크로스 유발)
+today_str        = "20260512"
+today_open_price = 28000  # 급락 → 단기MA < 장기MA → 데드크로스
 
 print(f"\n📌 오늘 시가 데이터 업로드 중... ({today_str})")
 
@@ -113,4 +90,4 @@ for stock_code in WATCHLIST.keys():
     )
     print(f"  ✅ {today_str} 시가 업로드 완료: {stock_code}")
 
-print("\n🎉 모든 테스트 데이터 업로드 완료!")
+print("\n🎉 추가 테스트 데이터 업로드 완료!")
