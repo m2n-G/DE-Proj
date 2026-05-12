@@ -1,0 +1,15 @@
+apiVersion: 1
+datasources:
+  - name: Amazon Athena
+    type: grafana-athena-datasource
+    access: proxy
+    jsonData:
+      authType: keys
+      defaultRegion: ap-northeast-3
+      catalog: AwsDataCatalog
+      database: krx_pipeline
+      workgroup: primary
+      outputLocation: s3://de-ai-07-827913617635-ma-proj/athena-results/
+    secureJsonData:
+      accessKey: $AWS_ACCESS_KEY_ID
+      secretKey: $AWS_SECRET_ACCESS_KEY

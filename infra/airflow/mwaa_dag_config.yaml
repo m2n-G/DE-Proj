@@ -1,0 +1,71 @@
+airflow:
+  timezone: "Asia/Seoul"
+  default_args:
+    owner: "airflow"
+    depends_on_past: false
+    retries: 1
+    retry_delay_minutes: 5
+    execution_timeout_minutes: 30
+  dag_defaults:
+    catchup: false
+    max_active_runs: 1
+    max_active_tasks: 4
+    tags:
+      - "krx"
+      - "realtime"
+
+aws:
+  s3_bucket: "de-ai-07-827913617635-ma-proj"
+  kinesis_stream: "de-ai-07-processing-stream"
+
+market:
+  timezone: "Asia/Seoul"
+  watchlist_source:
+    module: "config.signal_config"
+    attribute: "WATCHLIST"
+
+variables:
+  aws_conn_id: "aws_default"
+
+dags:
+  krx_optimizer_daily:
+    enabled: true
+    dag_id: "krx_optimizer_daily"
+    description: "Optimize moving-average parameters after market close."
+    schedule: "30 15 * * 1-5"    # ← 15:30 KST (장 마감)
+    start_date: "2026-05-07T00:00:00+09:00"
+    tasks:
+      - task_id: "check_market_day"
+        operator: "python"
+        callable: "config.market_config.is_market_day"
+      - task_id: "run_optimizer_lambda"
+        operator: "lambda"
+        function_name: "de-ai-07-lambda-optimizer"  # ← 수정
+        payload: {}
+    dependencies:
+      - "check_market_day >> run_optimizer_lambda"
+
+  krx_signal_intraday:
+    enabled: true
+    dag_id: "krx_signal_intraday"
+    description: "Wait for Silver daily data and run intraday crossover detection."
+    schedule: "*/5 9-15 * * 1-5"
+    start_date: "2026-05-07T00:00:00+09:00"
+    tasks:
+      - task_id: "check_market_day"
+        operator: "python"
+        callable: "config.market_config.is_market_day"
+      - task_id: "wait_for_daily_open_files"
+        operator: "s3_prefix_sensor"
+        bucket: "de-ai-07-827913617635-ma-proj"
+        prefix_template: "processed/daily/{{ stock_code }}/date={{ ds_nodash }}/"
+        expand_over: "watchlist"
+        timeout_minutes: 10
+        soft_fail: true
+      - task_id: "run_signal_lambda"
+        operator: "lambda"
+        function_name: "de-ai-07-lambda-signal"  # ← 수정
+        payload: {}
+    dependencies:
+      - "check_market_day >> wait_for_daily_open_files"
+      - "wait_for_daily_open_files >> run_signal_lambda"
