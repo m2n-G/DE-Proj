@@ -11,5 +11,5 @@ datasources:
       workgroup: primary
       outputLocation: s3://de-ai-07-827913617635-ma-proj/athena-results/
     secureJsonData:
-      accessKey: $AWS_ACCESS_KEY_ID
-      secretKey: $AWS_SECRET_ACCESS_KEY
+      accessKey: ${GF_AWS_ACCESS_KEY_ID}
+      secretKey: ${GF_AWS_SECRET_ACCESS_KEY}

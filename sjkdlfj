@@ -1,0 +1,15 @@
+[33m13c8421[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m feat. 인프라 관리 대시보드 추가
+[33m268985c[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat. docker 오픈소스로 전환
+[33m263ebaa[m feat. 최최종
+[33m820b001[m feat. 최종
+[33ma3af5a8[m feat. 테스트를 통한 수정1
+[33mc8b0076[m feat. 배포 테스트 및 수정
+[33m8946cad[m feat. dag작성
+[33m8f17af9[m feat. lambda_optimize handler 구현
+[33mab47806[m feat. lambda_signal handler 구현 완료
+[33mf15d488[m feat. lambda_clean 배포 · 테스트
+[33mf13c396[m feat. handler 구현 완료
+[33m6936cd7[m feat. 체결 데이터와 일봉 데이터의 의미 재정립
+[33m9287f45[m feat. silver단계 스키마 수정(실제 KIF response 스키마 바탕)
+[33m367364c[m feat. Kinesis stream 생성 + S3 이벤트 알림 활성화
+[33m27c3aff[m feat. to_bronze 테스트 결과

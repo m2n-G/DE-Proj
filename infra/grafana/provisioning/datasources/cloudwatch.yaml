@@ -14,5 +14,5 @@ datasources:
         - arn: arn:aws:logs:ap-northeast-3:827913617635:log-group:/aws/lambda/de-ai-07-lambda-optimizer
           name: /aws/lambda/de-ai-07-lambda-optimizer
     secureJsonData:
-      accessKey: $AWS_ACCESS_KEY_ID
-      secretKey: $AWS_SECRET_ACCESS_KEY
+      accessKey: ${GF_AWS_ACCESS_KEY_ID}
+      secretKey: ${GF_AWS_SECRET_ACCESS_KEY}
